@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tokio::fs::File;
+use tokio::fs;
 
 #[derive(Debug, Default, Clone)]
 pub struct Cell {
@@ -56,7 +56,7 @@ pub struct Buffer {
 
 impl Buffer {
     pub async fn from_file(path: &Path) -> Self {
-        let content = tokio::fs::read_to_string(path)
+        let content = fs::read_to_string(path)
             .await
             .unwrap_or_else(|_| Default::default())
             .parse()

@@ -8,10 +8,11 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    println!();
     let file = Path::new("src/buffer.rs");
     let buffer = Buffer::from_file(file).await;
     buffer.render(Screen::new()?)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(2000)).await;
 
     Ok(())
 }
