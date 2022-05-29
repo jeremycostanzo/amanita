@@ -1,10 +1,10 @@
 use crate::buffer::{Buffer, Cell, Content, Offset};
-use crossterm::cursor;
-use crossterm::style;
-use crossterm::style::Stylize;
-use crossterm::terminal;
-use std::io::Stdout;
-use std::io::Write;
+use crossterm::{
+    cursor,
+    style::{self, Stylize},
+    terminal, ExecutableCommand,
+};
+use std::io::{Stdout, Write};
 
 use anyhow::Result;
 
@@ -85,6 +85,10 @@ impl Cell {
 
 impl ScreenContent {
     fn display(&self, screen: &mut Screen) -> Result<()> {
+        screen
+            .terminal
+            .execute(terminal::Clear(terminal::ClearType::All))?;
+
         for (y, line) in self.inner().iter().enumerate() {
             for (x, cell) in line.iter().enumerate() {
                 cell.prepare_display(
