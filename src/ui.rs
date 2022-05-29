@@ -2,9 +2,10 @@ use crate::buffer::{Buffer, Cell, Content, Offset};
 use crossterm::{
     cursor,
     style::{self, Stylize},
-    terminal, ExecutableCommand,
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
 };
-use std::io::{Stdout, Write};
+use std::io::{stdout, Stdout, Write};
 
 use anyhow::Result;
 
@@ -26,6 +27,7 @@ pub struct Screen {
 impl Screen {
     pub fn new() -> Result<Self> {
         terminal::enable_raw_mode()?;
+        crossterm::execute!(stdout(), EnterAlternateScreen)?;
         let (width, heigth) = terminal::size()?;
         let terminal = std::io::stdout();
 
@@ -41,7 +43,12 @@ impl Screen {
 
 impl Drop for Screen {
     fn drop(&mut self) {
+        self.terminal
+            .execute(terminal::Clear(terminal::ClearType::All))
+            .expect("Failed to clear screen");
         terminal::disable_raw_mode().expect("Could not disable the raw mode");
+        crossterm::execute!(stdout(), LeaveAlternateScreen)
+            .expect("Could not leave alternate screen");
     }
 }
 
@@ -104,7 +111,7 @@ impl ScreenContent {
 }
 
 impl Buffer {
-    pub fn render(&self, mut screen: Screen) -> Result<()> {
+    pub fn render(&self, screen: &mut Screen) -> Result<()> {
         let cursor = &self.cursor;
         let screen_content = shrink_buffer_to_screen(
             &self.content,
@@ -113,7 +120,7 @@ impl Buffer {
             screen.heigth - screen.text_start_y,
         );
 
-        screen_content.display(&mut screen)?;
+        screen_content.display(screen)?;
 
         Ok(())
     }
