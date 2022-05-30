@@ -3,15 +3,17 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
 
+use anyhow::Result;
+
+#[derive(Debug, Default, Clone)]
+pub struct CursorPosition {
+    pub x: usize,
+    pub y: usize,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Cell {
     pub symbol: char,
-}
-
-#[derive(Debug, Default)]
-pub struct Cursor {
-    pub x: usize,
-    pub y: usize,
 }
 
 #[derive(Debug, Default)]
@@ -49,7 +51,7 @@ impl FromStr for Content {
 #[derive(Debug, Default)]
 pub struct Buffer {
     pub content: Content,
-    pub cursor: Cursor,
+    pub cursor_position: CursorPosition,
     pub offset: Offset,
     pub file_name: Option<PathBuf>,
 }
@@ -64,7 +66,7 @@ impl Buffer {
 
         Buffer {
             content,
-            cursor: Default::default(),
+            cursor_position: Default::default(),
             offset: Default::default(),
             file_name: Some(path.to_owned()),
         }
