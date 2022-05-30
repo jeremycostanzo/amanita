@@ -1,7 +1,7 @@
 use crate::buffer::{Buffer, Cell, Content, Offset};
 use crossterm::QueueableCommand;
 use crossterm::{
-    cursor,
+    cursor::{self, position},
     style::{self, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
@@ -22,58 +22,12 @@ pub struct ScreenCursorPosition {
     pub y: u16,
 }
 
-impl Screen {
-    pub fn cursor_forward(&mut self) -> Result<()> {
-        if self.cursor_position.x + 1 >= self.text_start_x + self.width {
-            self.cursor_position.x = self.text_start_x;
-            self.cursor_position.y =
-                if self.cursor_position.y + 1 >= self.text_start_y + self.heigth {
-                    self.text_start_y + self.heigth
-                } else {
-                    self.cursor_position.y + 1
-                }
-        } else {
-            self.cursor_position.x += 1
-        };
-        self.terminal
-            .queue(cursor::MoveTo(
-                self.cursor_position.x,
-                self.cursor_position.y,
-            ))?
-            .flush()?;
-
-        Ok(())
-    }
-
-    pub fn cursor_backwards(&mut self) -> Result<()> {
-        if self.cursor_position.x < self.text_start_x + 1 {
-            self.cursor_position.x = self.text_start_x + self.width;
-            self.cursor_position.y = if self.cursor_position.y < self.text_start_y + 1 {
-                self.text_start_y
-            } else {
-                self.cursor_position.y - 1
-            }
-        } else {
-            self.cursor_position.x -= 1
-        };
-        self.terminal
-            .queue(cursor::MoveTo(
-                self.cursor_position.x,
-                self.cursor_position.y,
-            ))?
-            .flush()?;
-
-        Ok(())
-    }
-}
-
 pub struct Screen {
     pub text_start_x: u16,
     pub text_start_y: u16,
     pub width: u16,
     pub heigth: u16,
     pub terminal: Stdout,
-    pub cursor_position: ScreenCursorPosition,
 }
 
 impl Screen {
@@ -89,7 +43,6 @@ impl Screen {
             text_start_y: 0,
             width,
             heigth,
-            cursor_position,
             terminal,
         })
     }
@@ -135,13 +88,11 @@ impl Cell {
         &self,
         x: u16,
         y: u16,
-        cursor_position: &ScreenCursorPosition,
         output: &mut impl crossterm::QueueableCommand,
     ) -> Result<()> {
         output
             .queue(cursor::MoveTo(x, y))?
-            .queue(style::PrintStyledContent(self.symbol.white()))?
-            .queue(cursor::MoveTo(cursor_position.x, cursor_position.y))?;
+            .queue(style::PrintStyledContent(self.symbol.white()))?;
         Ok(())
     }
 }
@@ -157,12 +108,10 @@ impl ScreenContent {
                 cell.prepare_display(
                     x as u16 + screen.text_start_x,
                     y as u16 + screen.text_start_y,
-                    &screen.cursor_position,
                     &mut screen.terminal,
                 )?;
             }
         }
-        screen.terminal.flush()?;
         Ok(())
     }
 }
@@ -176,7 +125,15 @@ impl Buffer {
             screen.heigth - screen.text_start_y,
         );
 
+        let screen_cursor_position = position()?;
         screen_content.display(screen)?;
+        screen
+            .terminal
+            .queue(cursor::MoveTo(
+                screen_cursor_position.0,
+                screen_cursor_position.1,
+            ))?
+            .flush()?;
 
         Ok(())
     }

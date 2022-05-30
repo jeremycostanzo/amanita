@@ -71,6 +71,28 @@ impl Buffer {
             file_name: Some(path.to_owned()),
         }
     }
+
+    pub fn insert(&mut self, c: char) -> anyhow::Result<()> {
+        let CursorPosition { x, y } = self.cursor_position;
+        let content = &mut self.content.0;
+        let line = content.get_mut(y);
+        let line = match line {
+            Some(line) => line,
+            None => match content.last_mut() {
+                Some(line) => line,
+                None => {
+                    content.push(Vec::new());
+                    content.get_mut(0).unwrap()
+                }
+            },
+        };
+
+        line.insert(x, Cell { symbol: c });
+
+        self.cursor_position.x += 1;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
