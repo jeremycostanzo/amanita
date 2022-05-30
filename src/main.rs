@@ -1,7 +1,11 @@
 use amanita::buffer::Buffer;
 use amanita::input::handle_input;
 use amanita::ui::Screen;
+use crossterm::cursor;
+use crossterm::QueueableCommand;
+use std::io::stdout;
 use std::io::Read;
+use std::io::Write;
 
 use anyhow::Result;
 use std::io;
@@ -15,6 +19,8 @@ async fn main() -> Result<()> {
     let file = Path::new("src/buffer.rs");
 
     let mut buffer = Buffer::from_file(file).await;
+
+    stdout().queue(cursor::MoveTo(0, 0))?.flush()?;
     buffer.render(&mut screen)?;
 
     handle_input(&mut buffer, &mut screen).await?;

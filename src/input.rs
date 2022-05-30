@@ -30,15 +30,13 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     modifiers: _,
                 }) = event
                 {
-                    screen
-                        .terminal
-                        .queue(style::PrintStyledContent(c.white()))?
-                        .flush()?;
-                    screen.cursor_forward()?;
+                    buffer.insert(c)?;
+                    println!("{c}");
+                    // buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Right.into()) {
-                    screen.cursor_forward()?;
+                    // screen.cursor_forward()?;
                 }
 
                 if event == Event::Key(KeyCode::Up.into()) {
@@ -50,7 +48,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                 }
 
                 if event == Event::Key(KeyCode::Left.into()) {
-                    screen.cursor_backwards()?;
+                    // screen.cursor_backwards()?;
                 }
 
                 if event == Event::Key(KeyCode::Down.into()) {
