@@ -78,28 +78,27 @@ impl Drop for Screen {
     }
 }
 
-fn shrink_buffer_to_screen(
-    content: &Content,
-    offset: &Offset,
-    width: u16,
-    heigth: u16,
-) -> ScreenContent {
-    let mut screen_content = Vec::new();
-    for y in offset.y..(offset.y + heigth as usize) {
-        let mut line = Vec::new();
-        for x in offset.x..(offset.x + width as usize) {
-            line.push(
-                content
-                    .inner()
-                    .get(y)
-                    .and_then(|content_line| content_line.get(x))
-                    .cloned()
-                    .unwrap_or_default(),
-            );
+impl Buffer {
+    fn display_on_screen(&self, width: u16, heigth: u16) -> ScreenContent {
+        let content = &self.content;
+        let offset = &self.offset;
+        let mut screen_content = Vec::new();
+        for y in offset.y..(offset.y + heigth as usize) {
+            let mut line = Vec::new();
+            for x in offset.x..(offset.x + width as usize) {
+                line.push(
+                    content
+                        .inner()
+                        .get(y)
+                        .and_then(|content_line| content_line.get(x))
+                        .cloned()
+                        .unwrap_or_default(),
+                );
+            }
+            screen_content.push(line);
         }
-        screen_content.push(line);
+        ScreenContent(screen_content)
     }
-    ScreenContent(screen_content)
 }
 
 impl Cell {
@@ -128,17 +127,22 @@ impl ScreenContent {
 }
 
 impl Buffer {
+    pub fn screen_cursor_position(&self) -> ScreenCursorPosition {
+        let x = (self.cursor_position.x - self.offset.x).try_into().unwrap();
+        let y = (self.cursor_position.y - self.offset.y).try_into().unwrap();
+        ScreenCursorPosition { x, y }
+    }
     pub fn render(&self, screen: &mut Screen) -> Result<()> {
-        let screen_content = shrink_buffer_to_screen(
-            &self.content,
-            &self.offset,
+        let screen_content = self.display_on_screen(
             screen.width - screen.text_start_x,
             screen.heigth - screen.text_start_y,
         );
 
-        queue!(screen, SavePosition, cursor::Hide)?;
+        queue!(screen, cursor::Hide)?;
         screen_content.display(screen)?;
-        queue!(screen, RestorePosition, cursor::Show)?;
+        let ScreenCursorPosition { x, y } = self.screen_cursor_position();
+        queue!(screen, cursor::MoveTo(x, y))?;
+        queue!(screen, cursor::Show)?;
         screen.flush()?;
 
         Ok(())
