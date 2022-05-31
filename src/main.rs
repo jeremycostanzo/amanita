@@ -4,14 +4,14 @@ use amanita::ui::Screen;
 use crossterm::cursor;
 use crossterm::QueueableCommand;
 use std::io::stdout;
-use std::io::Read;
+
 use std::io::Write;
 
 use anyhow::Result;
-use std::io;
+
 use std::path::Path;
-use std::time::Duration;
-use tokio::time::sleep;
+
+
 
 #[tokio::main]
 async fn main() -> Result<()> {

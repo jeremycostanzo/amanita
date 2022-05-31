@@ -3,16 +3,13 @@ use crate::ui::Screen;
 use crossterm::event::KeyEvent;
 use crossterm::QueueableCommand;
 use crossterm::{
-    cursor::{self, position},
-    style::{self, Stylize},
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
-    Command, ExecutableCommand,
+    cursor::{self},
 };
-use std::io::{stdout, Stdout, Write};
-use std::time::Duration;
+use std::io::{stdout};
+
 
 use futures::{future::FutureExt, StreamExt};
-use futures_timer::Delay;
+
 
 use anyhow::Result;
 

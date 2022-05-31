@@ -3,13 +3,13 @@ use crossterm::cursor::RestorePosition;
 use crossterm::cursor::SavePosition;
 use crossterm::QueueableCommand;
 use crossterm::{
-    cursor::{self, position},
+    cursor::{self},
     queue,
     style::{self, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use std::io::{self, stdout, Stdout, Write};
+use std::io::{self, stdout, Write};
 
 use anyhow::Result;
 
