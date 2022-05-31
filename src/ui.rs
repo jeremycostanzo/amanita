@@ -1,12 +1,15 @@
 use crate::buffer::{Buffer, Cell, Content, Offset};
+use crossterm::cursor::RestorePosition;
+use crossterm::cursor::SavePosition;
 use crossterm::QueueableCommand;
 use crossterm::{
     cursor::{self, position},
+    queue,
     style::{self, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use std::io::{stdout, Stdout, Write};
+use std::io::{self, stdout, Stdout, Write};
 
 use anyhow::Result;
 
@@ -27,7 +30,7 @@ pub struct Screen {
     pub text_start_y: u16,
     pub width: u16,
     pub heigth: u16,
-    pub terminal: Stdout,
+    pub terminal: String,
 }
 
 impl Screen {
@@ -35,8 +38,7 @@ impl Screen {
         terminal::enable_raw_mode()?;
         crossterm::execute!(stdout(), EnterAlternateScreen)?;
         let (width, heigth) = terminal::size()?;
-        let terminal = std::io::stdout();
-        let cursor_position = ScreenCursorPosition::default();
+        let terminal = String::new();
 
         Ok(Screen {
             text_start_x: 0,
@@ -48,10 +50,27 @@ impl Screen {
     }
 }
 
+impl io::Write for Screen {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match std::str::from_utf8(buf) {
+            Ok(s) => {
+                self.terminal.push_str(s);
+                Ok(s.len())
+            }
+            Err(_) => Err(io::ErrorKind::WriteZero.into()),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let out = write!(stdout(), "{}", self.terminal);
+        stdout().flush()?;
+        self.terminal.clear();
+        out
+    }
+}
 impl Drop for Screen {
     fn drop(&mut self) {
-        self.terminal
-            .execute(terminal::Clear(terminal::ClearType::All))
+        self.execute(terminal::Clear(terminal::ClearType::All))
             .expect("Failed to clear screen");
         terminal::disable_raw_mode().expect("Could not disable the raw mode");
         crossterm::execute!(stdout(), LeaveAlternateScreen)
@@ -84,13 +103,8 @@ fn shrink_buffer_to_screen(
 }
 
 impl Cell {
-    fn prepare_display(
-        &self,
-        x: u16,
-        y: u16,
-        output: &mut impl crossterm::QueueableCommand,
-    ) -> Result<()> {
-        output
+    fn prepare_display(&self, x: u16, y: u16, screen: &mut Screen) -> Result<()> {
+        screen
             .queue(cursor::MoveTo(x, y))?
             .queue(style::PrintStyledContent(self.symbol.white()))?;
         Ok(())
@@ -99,16 +113,13 @@ impl Cell {
 
 impl ScreenContent {
     fn display(&self, screen: &mut Screen) -> Result<()> {
-        screen
-            .terminal
-            .execute(terminal::Clear(terminal::ClearType::All))?;
-
         for (y, line) in self.inner().iter().enumerate() {
+            screen.queue(terminal::Clear(terminal::ClearType::UntilNewLine))?;
             for (x, cell) in line.iter().enumerate() {
                 cell.prepare_display(
                     x as u16 + screen.text_start_x,
                     y as u16 + screen.text_start_y,
-                    &mut screen.terminal,
+                    screen,
                 )?;
             }
         }
@@ -125,15 +136,10 @@ impl Buffer {
             screen.heigth - screen.text_start_y,
         );
 
-        let screen_cursor_position = position()?;
+        queue!(screen, SavePosition, cursor::Hide)?;
         screen_content.display(screen)?;
-        screen
-            .terminal
-            .queue(cursor::MoveTo(
-                screen_cursor_position.0,
-                screen_cursor_position.1,
-            ))?
-            .flush()?;
+        queue!(screen, RestorePosition, cursor::Show)?;
+        screen.flush()?;
 
         Ok(())
     }

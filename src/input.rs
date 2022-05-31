@@ -1,9 +1,14 @@
 use crate::buffer::Buffer;
 use crate::ui::Screen;
 use crossterm::event::KeyEvent;
-use crossterm::style::{self, Stylize};
 use crossterm::QueueableCommand;
-use std::io::Write;
+use crossterm::{
+    cursor::{self, position},
+    style::{self, Stylize},
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+    Command, ExecutableCommand,
+};
+use std::io::{stdout, Stdout, Write};
 use std::time::Duration;
 
 use futures::{future::FutureExt, StreamExt};
@@ -11,16 +16,12 @@ use futures_timer::Delay;
 
 use anyhow::Result;
 
-use crossterm::{
-    cursor,
-    event::{Event, EventStream, KeyCode},
-};
+use crossterm::event::{Event, EventStream, KeyCode};
 
 pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()> {
     let mut reader = EventStream::new();
 
     loop {
-        let mut delay = Delay::new(Duration::from_millis(3_000)).fuse();
         let event = reader.next().fuse();
 
         match event.await {
@@ -31,8 +32,8 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                 }) = event
                 {
                     buffer.insert(c)?;
-                    println!("{c}");
-                    // buffer.render(screen)?;
+                    stdout().queue(cursor::MoveRight(1))?;
+                    buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Right.into()) {
