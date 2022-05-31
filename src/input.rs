@@ -1,15 +1,11 @@
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer, Direction};
 use crate::ui::Screen;
-use crossterm::event::KeyEvent;
+use crossterm::cursor;
+use crossterm::event::{KeyEvent, KeyModifiers};
 use crossterm::QueueableCommand;
-use crossterm::{
-    cursor::{self},
-};
-use std::io::{stdout};
-
+use std::io::stdout;
 
 use futures::{future::FutureExt, StreamExt};
-
 
 use anyhow::Result;
 
@@ -25,36 +21,36 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
             Some(Ok(event)) => {
                 if let Event::Key(KeyEvent {
                     code: KeyCode::Char(c),
-                    modifiers: _,
+                    modifiers: KeyModifiers::NONE,
                 }) = event
                 {
-                    buffer.insert(c)?;
-                    stdout().queue(cursor::MoveRight(1))?;
+                    buffer.insert(c, screen);
                     buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Right.into()) {
-                    // screen.cursor_forward()?;
+                    buffer.move_cursor(Direction::Right, screen);
+                    buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Up.into()) {
-                    // cursor_position.y -= 1;
-                    // screen
-                    //     .terminal
-                    //     .queue(cursor::MoveTo(cursor_position.x, cursor_position.y))?;
-                    // screen.terminal.flush()?;
+                    buffer.move_cursor(Direction::Up, screen);
+                    buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Left.into()) {
-                    // screen.cursor_backwards()?;
+                    buffer.move_cursor(Direction::Left, screen);
+                    buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Down.into()) {
-                    // cursor_position.y += 1;
-                    // screen
-                    //     .terminal
-                    //     .queue(cursor::MoveTo(cursor_position.x, cursor_position.y))?;
-                    // screen.terminal.flush()?;
+                    buffer.move_cursor(Direction::Down, screen);
+                    buffer.render(screen)?;
+                }
+
+                if event == Event::Key(KeyCode::Backspace.into()) {
+                    buffer.delete_char();
+                    buffer.render(screen)?;
                 }
 
                 if event == Event::Key(KeyCode::Esc.into()) {
