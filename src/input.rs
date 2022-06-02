@@ -1,7 +1,7 @@
 use crate::buffer::{Buffer, Direction};
 use crate::ui::Screen;
 use crossterm::cursor;
-use crossterm::event::{KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crossterm::QueueableCommand;
 use std::io::stdout;
 
@@ -9,7 +9,7 @@ use futures::{future::FutureExt, StreamExt};
 
 use anyhow::Result;
 
-use crossterm::event::{Event, EventStream, KeyCode};
+use crossterm::event::{Event, EventStream};
 
 pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()> {
     let mut reader = EventStream::new();
@@ -19,43 +19,55 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
 
         match event.await {
             Some(Ok(event)) => {
-                if let Event::Key(KeyEvent {
-                    code: KeyCode::Char(c),
-                    modifiers: KeyModifiers::NONE,
-                }) = event
-                {
-                    buffer.insert(c, screen);
-                    buffer.render(screen)?;
-                }
+                match event {
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char(c),
+                        modifiers: KeyModifiers::NONE,
+                    }) => {
+                        buffer.insert(c, screen);
+                    }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Right,
+                        ..
+                    }) => {
+                        buffer.move_cursor(Direction::Right, 1, screen);
+                    }
 
-                if event == Event::Key(KeyCode::Right.into()) {
-                    buffer.move_cursor(Direction::Right, screen);
-                    buffer.render(screen)?;
-                }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Up, ..
+                    }) => {
+                        buffer.move_cursor(Direction::Up, 1, screen);
+                    }
 
-                if event == Event::Key(KeyCode::Up.into()) {
-                    buffer.move_cursor(Direction::Up, screen);
-                    buffer.render(screen)?;
-                }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Left,
+                        ..
+                    }) => {
+                        buffer.move_cursor(Direction::Left, 1, screen);
+                    }
 
-                if event == Event::Key(KeyCode::Left.into()) {
-                    buffer.move_cursor(Direction::Left, screen);
-                    buffer.render(screen)?;
-                }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Down,
+                        ..
+                    }) => {
+                        buffer.move_cursor(Direction::Down, 1, screen);
+                    }
 
-                if event == Event::Key(KeyCode::Down.into()) {
-                    buffer.move_cursor(Direction::Down, screen);
-                    buffer.render(screen)?;
-                }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Backspace,
+                        ..
+                    }) => {
+                        buffer.delete_char(screen);
+                    }
 
-                if event == Event::Key(KeyCode::Backspace.into()) {
-                    buffer.delete_char();
-                    buffer.render(screen)?;
-                }
-
-                if event == Event::Key(KeyCode::Esc.into()) {
-                    break;
-                }
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Esc, ..
+                    }) => {
+                        break;
+                    }
+                    _ => {}
+                };
+                buffer.render(screen)?;
             }
             Some(Err(e)) => println!("Error: {:?}\r", e),
             None => continue,
