@@ -61,6 +61,13 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     }
 
                     Event::Key(KeyEvent {
+                        code: KeyCode::Enter,
+                        ..
+                    }) => {
+                        buffer.add_new_line(screen);
+                    }
+
+                    Event::Key(KeyEvent {
                         code: KeyCode::Esc, ..
                     }) => {
                         break;
