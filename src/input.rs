@@ -61,6 +61,14 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     }
 
                     Event::Key(KeyEvent {
+                        code: KeyCode::Tab, ..
+                    }) => {
+                        for _ in 0..4 {
+                            buffer.insert(' ', screen);
+                        }
+                    }
+
+                    Event::Key(KeyEvent {
                         code: KeyCode::Enter,
                         ..
                     }) => {
