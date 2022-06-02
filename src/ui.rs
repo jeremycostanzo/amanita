@@ -1,10 +1,8 @@
-use crate::buffer::{Buffer, Cell, Content, Offset};
-use crossterm::cursor::RestorePosition;
-use crossterm::cursor::SavePosition;
+use crate::buffer::CursorPosition;
+use crate::buffer::{Buffer, Cell};
 use crossterm::QueueableCommand;
 use crossterm::{
-    cursor::{self},
-    queue,
+    cursor, queue,
     style::{self, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
@@ -19,12 +17,8 @@ impl ScreenContent {
         &self.0
     }
 }
-#[derive(Debug, Default)]
-pub struct ScreenCursorPosition {
-    pub x: u16,
-    pub y: u16,
-}
 
+#[derive(Default)]
 pub struct Screen {
     pub text_start_x: u16,
     pub text_start_y: u16,
@@ -113,13 +107,15 @@ impl Cell {
 impl ScreenContent {
     fn display(&self, screen: &mut Screen) -> Result<()> {
         for (y, line) in self.inner().iter().enumerate() {
-            screen.queue(terminal::Clear(terminal::ClearType::UntilNewLine))?;
+            let y = y as u16 + screen.text_start_y;
+            screen
+                .queue(cursor::MoveTo(0, y))?
+                .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
+
             for (x, cell) in line.iter().enumerate() {
-                cell.prepare_display(
-                    x as u16 + screen.text_start_x,
-                    y as u16 + screen.text_start_y,
-                    screen,
-                )?;
+                let x = x as u16 + screen.text_start_x;
+                screen.queue(cursor::MoveTo(x, y))?;
+                cell.prepare_display(x, y, screen)?;
             }
         }
         Ok(())
@@ -127,11 +123,6 @@ impl ScreenContent {
 }
 
 impl Buffer {
-    pub fn screen_cursor_position(&self) -> ScreenCursorPosition {
-        let x = (self.cursor_position.x - self.offset.x).try_into().unwrap();
-        let y = (self.cursor_position.y - self.offset.y).try_into().unwrap();
-        ScreenCursorPosition { x, y }
-    }
     pub fn render(&self, screen: &mut Screen) -> Result<()> {
         let screen_content = self.display_on_screen(
             screen.width - screen.text_start_x,
@@ -140,7 +131,7 @@ impl Buffer {
 
         queue!(screen, cursor::Hide)?;
         screen_content.display(screen)?;
-        let ScreenCursorPosition { x, y } = self.screen_cursor_position();
+        let CursorPosition { x, y } = self.cursor_position;
         queue!(screen, cursor::MoveTo(x, y))?;
         queue!(screen, cursor::Show)?;
         screen.flush()?;
