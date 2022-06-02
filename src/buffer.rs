@@ -194,6 +194,18 @@ impl Buffer {
             self.move_cursor(Direction::Left, 1, screen);
         }
     }
+
+    pub fn add_new_line(&mut self, screen: &Screen) {
+        let y = self.y();
+        let x = self.x();
+        let inner = &mut self.content.0;
+        let current_line = inner.get_mut(y).unwrap();
+        let to_add = current_line.drain(x..).collect();
+        inner.insert(y + 1, to_add);
+        self.move_cursor(Direction::Down, 1, screen);
+        self.offset.x = 0;
+        self.cursor_position.x = 0;
+    }
 }
 
 pub enum Direction {
