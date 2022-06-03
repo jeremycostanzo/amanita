@@ -1,9 +1,6 @@
 use crate::buffer::{Buffer, Direction};
 use crate::ui::Screen;
-use crossterm::cursor;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use crossterm::QueueableCommand;
-use std::io::stdout;
 
 use futures::{future::FutureExt, StreamExt};
 
@@ -20,6 +17,12 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
         match event.await {
             Some(Ok(event)) => {
                 match event {
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char('s'),
+                        modifiers: KeyModifiers::CONTROL,
+                    }) => {
+                        buffer.save().await?;
+                    }
                     Event::Key(KeyEvent {
                         code: KeyCode::Char(c),
                         modifiers: KeyModifiers::NONE,
