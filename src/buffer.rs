@@ -123,8 +123,9 @@ impl Buffer {
         *offset = (*offset).saturating_sub(to_remove_to_offset);
     }
 
-    fn sub_x(&mut self, x: usize) {
+    fn sub_x(&mut self, x: usize, screen: &Screen) {
         Buffer::sub_any(&mut self.cursor_position.x, &mut self.offset.x, x);
+        self.adjust_x(screen);
     }
 
     fn sub_y(&mut self, y: usize, screen: &Screen) {
@@ -207,7 +208,7 @@ impl Buffer {
         use Direction::*;
         match direction {
             Up => self.sub_y(value, screen),
-            Left => self.sub_x(value),
+            Left => self.sub_x(value, screen),
             Down => self.add_y(value, screen),
             Right => self.add_x(value, screen),
         };
@@ -228,9 +229,19 @@ impl Buffer {
                 self.move_cursor(Direction::Right, previous_line_length, screen);
             }
         } else {
-            inner.get_mut(y).unwrap().remove((x) - 1);
-            self.move_cursor(Direction::Left, 1, screen);
+            let line = inner.get_mut(y).unwrap();
+            let char = line.get(x - 1).unwrap().symbol;
+            if char == '\t' {
+                for i in 1..5 {
+                    line.remove((x) - i);
+                }
+                self.move_cursor(Direction::Left, 4, screen);
+            } else {
+                line.remove((x) - 1);
+                self.move_cursor(Direction::Left, 1, screen);
+            }
         }
+        self.adjust_x(screen);
     }
 
     pub fn add_new_line(&mut self, screen: &Screen) {

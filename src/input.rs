@@ -67,7 +67,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Tab, ..
                     }) => {
                         for _ in 0..4 {
-                            buffer.insert(' ', screen);
+                            buffer.insert('\t', screen);
                         }
                     }
 

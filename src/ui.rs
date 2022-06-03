@@ -100,6 +100,13 @@ impl Cell {
         screen
             .queue(cursor::MoveTo(x, y))?
             .queue(style::PrintStyledContent(self.symbol.white()))?;
+
+        if self.symbol == '\t' {
+            for _ in 0..3 {
+                screen.queue(style::PrintStyledContent(self.symbol.white()))?;
+            }
+        }
+
         Ok(())
     }
 }
