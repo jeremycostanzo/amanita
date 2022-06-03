@@ -86,7 +86,11 @@ impl Buffer {
             .content
             .inner()
             .iter()
-            .flat_map(|line| line.iter().map(|cell| cell.symbol))
+            .flat_map(|line| {
+                line.iter()
+                    .map(|cell| cell.symbol)
+                    .chain(vec!['\n'].into_iter())
+            })
             .collect();
 
         let mut file = tokio::fs::OpenOptions::new()
