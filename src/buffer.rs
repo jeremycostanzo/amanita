@@ -3,6 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 use anyhow::Result;
 
@@ -57,12 +58,45 @@ pub struct Buffer {
     pub file_name: Option<PathBuf>,
 }
 
+#[derive(Debug, Clone)]
+struct NoFileName;
+
+impl std::fmt::Display for NoFileName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "No file name provided")
+    }
+}
+impl std::error::Error for NoFileName {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
 impl Buffer {
     pub fn y(&self) -> usize {
         self.cursor_position.y as usize + self.offset.y
     }
     pub fn x(&self) -> usize {
         self.cursor_position.x as usize + self.offset.x
+    }
+
+    pub async fn save(&self) -> anyhow::Result<()> {
+        let file_name = self.file_name.as_ref().ok_or(NoFileName)?;
+        let buffer_string: String = self
+            .content
+            .inner()
+            .iter()
+            .flat_map(|line| line.iter().map(|cell| cell.symbol))
+            .collect();
+
+        let mut file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(file_name)
+            .await?;
+
+        file.write_all(buffer_string.as_bytes()).await?;
+        Ok(())
     }
 
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
