@@ -91,7 +91,8 @@ impl Buffer {
                     .map(|cell| cell.symbol)
                     .chain(vec!['\n'].into_iter())
             })
-            .collect();
+            .collect::<String>()
+            .replace("\t\t\t\t", "\t");
 
         let mut file = tokio::fs::OpenOptions::new()
             .write(true)
