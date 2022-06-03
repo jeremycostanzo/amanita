@@ -30,6 +30,15 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         buffer.insert(c, screen);
                     }
                     Event::Key(KeyEvent {
+                        code: KeyCode::Char(c),
+                        modifiers: KeyModifiers::SHIFT,
+                    }) => {
+                        let uppercase_chars = c.to_uppercase().collect::<Vec<_>>();
+                        if uppercase_chars.len() == 1 {
+                            buffer.insert(uppercase_chars[0], screen);
+                        }
+                    }
+                    Event::Key(KeyEvent {
                         code: KeyCode::Right,
                         ..
                     }) => {
