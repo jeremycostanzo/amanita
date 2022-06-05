@@ -108,13 +108,19 @@ impl Buffer {
 
             let content = self.content.inner_mut();
             content.remove(pos - 1);
-
             self.move_cursor(Direction::Up, 1, screen);
             self.move_cursor(Direction::Right, len, screen);
         } else {
             let content = self.content.inner_mut();
-            content.remove(pos - 1);
-            self.move_cursor(Direction::Left, 1, screen);
+            let char = content.remove(pos - 1);
+            if char == '\t' {
+                content.remove(pos - 2);
+                content.remove(pos - 3);
+                content.remove(pos - 4);
+                self.move_cursor(Direction::Left, 4, screen);
+            } else {
+                self.move_cursor(Direction::Left, 1, screen);
+            }
         }
     }
 }
