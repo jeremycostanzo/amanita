@@ -1,5 +1,5 @@
+use crate::buffer::Buffer;
 use crate::buffer::CursorPosition;
-use crate::buffer::{Buffer, Cell};
 use crossterm::QueueableCommand;
 use crossterm::{
     cursor, queue,
@@ -8,6 +8,17 @@ use crossterm::{
     ExecutableCommand,
 };
 use std::io::{self, stdout, Write};
+
+#[derive(Debug, Default, Clone)]
+pub struct Cell {
+    pub symbol: char,
+}
+
+impl From<char> for Cell {
+    fn from(symbol: char) -> Self {
+        Self { symbol }
+    }
+}
 
 use anyhow::Result;
 
@@ -62,6 +73,7 @@ impl io::Write for Screen {
         out
     }
 }
+
 impl Drop for Screen {
     fn drop(&mut self) {
         self.execute(terminal::Clear(terminal::ClearType::All))
@@ -76,21 +88,15 @@ impl Buffer {
     fn display_on_screen(&self, width: u16, heigth: u16) -> ScreenContent {
         let content = &self.content;
         let offset = &self.offset;
-        let mut screen_content = Vec::new();
-        for y in offset.y..(offset.y + heigth as usize) {
-            let mut line = Vec::new();
-            for x in offset.x..(offset.x + width as usize) {
-                line.push(
-                    content
-                        .inner()
-                        .get(y)
-                        .and_then(|content_line| content_line.get(x))
-                        .cloned()
-                        .unwrap_or_default(),
-                );
-            }
-            screen_content.push(line);
-        }
+
+        let screen_lines = content.inner().lines().skip(offset.y).take(heigth.into());
+
+        let trimmed_screen_lines = screen_lines.map(|line| line.chars().take(width.into()));
+
+        let screen_content = trimmed_screen_lines
+            .map(|chars| chars.map(Into::into).collect())
+            .collect();
+
         ScreenContent(screen_content)
     }
 }
@@ -113,6 +119,7 @@ impl Cell {
 
 impl ScreenContent {
     fn display(&self, screen: &mut Screen) -> Result<()> {
+        let mut lines_printed = 0;
         for (y, line) in self.inner().iter().enumerate() {
             let y = y as u16 + screen.text_start_y;
             screen
@@ -124,6 +131,12 @@ impl ScreenContent {
                 screen.queue(cursor::MoveTo(x, y))?;
                 cell.prepare_display(x, y, screen)?;
             }
+            lines_printed += 1;
+        }
+        for y in lines_printed..screen.heigth {
+            screen
+                .queue(cursor::MoveTo(0, y))?
+                .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
         }
         Ok(())
     }
@@ -138,7 +151,7 @@ impl Buffer {
 
         queue!(screen, cursor::Hide)?;
         screen_content.display(screen)?;
-        let CursorPosition { x, y } = self.cursor_position;
+        let CursorPosition { x, y } = self.screen_cursor_position;
         queue!(screen, cursor::MoveTo(x, y))?;
         queue!(screen, cursor::Show)?;
         screen.flush()?;
