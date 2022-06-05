@@ -12,11 +12,6 @@ pub struct CursorPosition {
     pub y: u16,
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct Cell {
-    pub symbol: char,
-}
-
 #[derive(Debug, Default)]
 pub struct Offset {
     pub x: usize,
@@ -24,13 +19,13 @@ pub struct Offset {
 }
 
 #[derive(Debug, Default)]
-pub struct Content(Vec<Vec<Cell>>);
+pub struct Content(String);
 impl Content {
-    pub fn inner(&self) -> &Vec<Vec<Cell>> {
+    pub fn inner(&self) -> &str {
         &self.0
     }
 
-    pub fn inner_mut(&mut self) -> &mut Vec<Vec<Cell>> {
+    pub fn inner_mut(&mut self) -> &mut String {
         &mut self.0
     }
 }
@@ -39,24 +34,14 @@ impl FromStr for Content {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Content(
-            s.lines()
-                .into_iter()
-                .map(|line| {
-                    line.chars()
-                        .into_iter()
-                        .map(|char| Cell { symbol: char })
-                        .collect()
-                })
-                .collect(),
-        ))
+        Ok(Content(s.to_owned()))
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Buffer {
     pub content: Content,
-    pub cursor_position: CursorPosition,
+    pub screen_cursor_position: CursorPosition,
     pub offset: Offset,
     pub file_name: Option<PathBuf>,
 }
@@ -77,25 +62,28 @@ impl std::error::Error for NoFileName {
 
 impl Buffer {
     pub fn y(&self) -> usize {
-        self.cursor_position.y as usize + self.offset.y
+        self.screen_cursor_position.y as usize + self.offset.y
     }
     pub fn x(&self) -> usize {
-        self.cursor_position.x as usize + self.offset.x
+        self.screen_cursor_position.x as usize + self.offset.x
+    }
+
+    pub fn raw_position(&self) -> usize {
+        let x = self.x();
+        let y = self.y();
+        let lines = &mut self.content.inner().lines();
+
+        let beginning_lines = lines.take(y);
+
+        let beginning_count =
+            beginning_lines.fold(0, |character_count, line| character_count + line.len() + 1);
+
+        beginning_count + x
     }
 
     pub async fn save(&self) -> anyhow::Result<()> {
         let file_name = self.file_name.as_ref().ok_or(NoFileName)?;
-        let buffer_string: String = self
-            .content
-            .inner()
-            .iter()
-            .flat_map(|line| {
-                line.iter()
-                    .map(|cell| cell.symbol)
-                    .chain(vec!['\n'].into_iter())
-            })
-            .collect::<String>()
-            .replace("\t\t\t\t", "\t");
+        let buffer_string: String = self.content.inner().replace("\t\t\t\t", "\t");
 
         let mut file = tokio::fs::OpenOptions::new()
             .write(true)
@@ -116,7 +104,7 @@ impl Buffer {
 
         Buffer {
             content,
-            cursor_position: Default::default(),
+            screen_cursor_position: Default::default(),
             offset: Default::default(),
             file_name: Some(path.to_owned()),
         }

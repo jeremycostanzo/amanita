@@ -1,17 +1,16 @@
-use crate::buffer::Cell;
-
 use crate::buffer::Buffer;
 use crate::ui::Screen;
 
 impl Buffer {
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
     fn adjust_x(&mut self, screen: &Screen) {
-        let new_line_size = self.content.inner().get(self.y()).unwrap().len();
+        let new_line_size = self.content.inner().lines().nth(self.y()).unwrap().len();
         if self.offset.x > new_line_size {
             self.offset.x = new_line_size.saturating_sub(screen.width as usize);
         }
         if self.x() > new_line_size {
-            self.cursor_position.x = (new_line_size - self.offset.x as usize).try_into().unwrap();
+            self.screen_cursor_position.x =
+                (new_line_size - self.offset.x as usize).try_into().unwrap();
         }
     }
 
@@ -25,12 +24,12 @@ impl Buffer {
     }
 
     fn sub_x(&mut self, x: usize, screen: &Screen) {
-        Buffer::sub_any(&mut self.cursor_position.x, &mut self.offset.x, x);
+        Buffer::sub_any(&mut self.screen_cursor_position.x, &mut self.offset.x, x);
         self.adjust_x(screen);
     }
 
     fn sub_y(&mut self, y: usize, screen: &Screen) {
-        Buffer::sub_any(&mut self.cursor_position.y, &mut self.offset.y, y);
+        Buffer::sub_any(&mut self.screen_cursor_position.y, &mut self.offset.y, y);
         self.adjust_x(screen);
     }
 
@@ -47,7 +46,7 @@ impl Buffer {
 
     fn add_x(&mut self, x: usize, screen: &Screen) {
         Buffer::add_any(
-            &mut self.cursor_position.x,
+            &mut self.screen_cursor_position.x,
             &mut self.offset.x,
             screen.width,
             x,
@@ -56,9 +55,9 @@ impl Buffer {
     }
 
     fn add_y(&mut self, y: usize, screen: &Screen) {
-        let to_add = y.min(self.content.inner().len() - self.y() - 1);
+        let to_add = y.min(self.content.inner().lines().count() - self.y() - 1);
         Buffer::add_any(
-            &mut self.cursor_position.y,
+            &mut self.screen_cursor_position.y,
             &mut self.offset.y,
             screen.heigth,
             to_add,
@@ -76,70 +75,47 @@ impl Buffer {
         };
     }
 
-    pub fn insert(&mut self, c: char, screen: &Screen) {
-        let (x, y) = (self.x(), self.y());
+    pub fn insert_newline(&mut self, screen: &Screen) {
+        let pos = self.raw_position();
         let content = self.content.inner_mut();
-        let line = content.get_mut(y);
-        let line = match line {
-            Some(line) => line,
-            None => match content.last_mut() {
-                Some(line) => line,
-                None => {
-                    content.push(Vec::new());
-                    content.get_mut(0).unwrap()
-                }
-            },
-        };
+        content.insert(pos, '\n');
+        self.move_cursor(Direction::Down, 1, screen);
+        self.offset.x = 0;
+        self.screen_cursor_position.x = 0;
+    }
 
-        line.insert(x, Cell { symbol: c });
+    pub fn insert_char(&mut self, c: char, screen: &Screen) {
+        let pos = self.raw_position();
+        let content = self.content.inner_mut();
+        content.insert(pos, c);
 
-        if self.cursor_position.x == screen.width {
+        if self.screen_cursor_position.x == screen.width {
             self.offset.x += 1;
         } else {
-            self.cursor_position.x += 1;
+            self.screen_cursor_position.x += 1;
         }
     }
 
     pub fn delete_char(&mut self, screen: &Screen) {
-        let x = self.x();
-        let y = self.y();
-        let inner = self.content.inner_mut();
-        if x == 0 {
-            if y != 0 {
-                let current_line = inner.get(y).unwrap().clone();
-                let previous_line = inner.get_mut(y - 1).unwrap();
-                let previous_line_length = previous_line.len();
-                previous_line.extend(current_line);
-                inner.remove(y);
-                self.move_cursor(Direction::Up, 1, screen);
-                self.move_cursor(Direction::Right, previous_line_length, screen);
-            }
-        } else {
-            let line = inner.get_mut(y).unwrap();
-            let char = line.get(x - 1).unwrap().symbol;
-            if char == '\t' {
-                for i in 1..5 {
-                    line.remove((x) - i);
-                }
-                self.move_cursor(Direction::Left, 4, screen);
-            } else {
-                line.remove((x) - 1);
-                self.move_cursor(Direction::Left, 1, screen);
-            }
+        let pos = self.raw_position();
+        if pos == 0 {
+            return;
         }
-        self.adjust_x(screen);
-    }
 
-    pub fn add_new_line(&mut self, screen: &Screen) {
-        let y = self.y();
-        let x = self.x();
-        let inner = self.content.inner_mut();
-        let current_line = inner.get_mut(y).unwrap();
-        let to_add = current_line.drain(x..).collect();
-        inner.insert(y + 1, to_add);
-        self.move_cursor(Direction::Down, 1, screen);
-        self.offset.x = 0;
-        self.cursor_position.x = 0;
+        if self.x() == 0 {
+            let y = self.y();
+            let len = self.content.inner().lines().nth(y - 1).unwrap().len();
+
+            let content = self.content.inner_mut();
+            content.remove(pos - 1);
+
+            self.move_cursor(Direction::Up, 1, screen);
+            self.move_cursor(Direction::Right, len, screen);
+        } else {
+            let content = self.content.inner_mut();
+            content.remove(pos - 1);
+            self.move_cursor(Direction::Left, 1, screen);
+        }
     }
 }
 

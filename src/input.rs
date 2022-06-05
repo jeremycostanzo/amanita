@@ -28,7 +28,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Char(c),
                         modifiers: KeyModifiers::NONE,
                     }) => {
-                        buffer.insert(c, screen);
+                        buffer.insert_char(c, screen);
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Char(c),
@@ -36,7 +36,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     }) => {
                         let uppercase_chars = c.to_uppercase().collect::<Vec<_>>();
                         if uppercase_chars.len() == 1 {
-                            buffer.insert(uppercase_chars[0], screen);
+                            buffer.insert_char(uppercase_chars[0], screen);
                         }
                     }
                     Event::Key(KeyEvent {
@@ -77,7 +77,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Tab, ..
                     }) => {
                         for _ in 0..4 {
-                            buffer.insert('\t', screen);
+                            buffer.insert_char('\t', screen);
                         }
                     }
 
@@ -85,11 +85,12 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Enter,
                         ..
                     }) => {
-                        buffer.add_new_line(screen);
+                        buffer.insert_newline(screen);
                     }
 
                     Event::Key(KeyEvent {
-                        code: KeyCode::Esc, ..
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
                     }) => {
                         break;
                     }
