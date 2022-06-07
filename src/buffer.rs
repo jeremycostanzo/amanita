@@ -12,13 +12,13 @@ pub struct CursorPosition {
     pub y: u16,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Offset {
     pub x: usize,
     pub y: usize,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Content(String);
 impl Content {
     pub fn inner(&self) -> &str {
@@ -38,7 +38,7 @@ impl FromStr for Content {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Buffer {
     pub content: Content,
     pub screen_cursor_position: CursorPosition,
@@ -81,6 +81,40 @@ impl Buffer {
         beginning_count + x
     }
 
+    /// I consider three "groups":
+    /// [alphanumeric characters](char::is_alphanumeric)
+    /// [punctuation](char::is_punctuation)
+    /// if the cursor is on one of these groups, it will move to the next cursor that is not in it.
+    /// If there is a whitespace, it moves to the first character that is not a whitespace after
+    /// that.
+    pub fn next_word_index(&self) -> usize {
+        let position = self.raw_position();
+        let inner = self.content.inner();
+        let mut chars = inner.chars().skip(position);
+        let char_type_on_cursor: CharacterType = chars.next().unwrap().into();
+
+        let mut went_through_other = false;
+
+        for index in (position + 1)..inner.len() {
+            let char_type_on_index: CharacterType = chars.next().unwrap().into();
+            match (char_type_on_cursor, char_type_on_index) {
+                (CharacterType::Alphanumeric, CharacterType::Punctuation)
+                | (CharacterType::Punctuation, CharacterType::Alphanumeric)
+                | (CharacterType::Other, CharacterType::Alphanumeric)
+                | (CharacterType::Other, CharacterType::Punctuation) => return index,
+                (_, CharacterType::Other) => went_through_other = true,
+                (CharacterType::Alphanumeric, CharacterType::Alphanumeric)
+                | (CharacterType::Punctuation, CharacterType::Punctuation) => {
+                    if went_through_other {
+                        return index;
+                    }
+                }
+            }
+        }
+
+        inner.len() - 1
+    }
+
     pub async fn save(&self) -> anyhow::Result<()> {
         let file_name = self.file_name.as_ref().ok_or(NoFileName)?;
         let buffer_string: String = self.content.inner().replace("\t\t\t\t", "\t");
@@ -107,6 +141,25 @@ impl Buffer {
             screen_cursor_position: Default::default(),
             offset: Default::default(),
             file_name: Some(path.to_owned()),
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+enum CharacterType {
+    Alphanumeric,
+    Punctuation,
+    Other,
+}
+
+impl From<char> for CharacterType {
+    fn from(c: char) -> Self {
+        if c.is_alphanumeric() {
+            CharacterType::Alphanumeric
+        } else if c.is_ascii_punctuation() {
+            CharacterType::Punctuation
+        } else {
+            CharacterType::Other
         }
     }
 }

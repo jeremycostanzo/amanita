@@ -29,7 +29,7 @@ impl ScreenContent {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Screen {
     pub text_start_x: u16,
     pub text_start_y: u16,
