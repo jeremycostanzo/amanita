@@ -75,6 +75,11 @@ impl Buffer {
         };
     }
 
+    pub fn move_to_next_word(&mut self, screen: &Screen) {
+        let target = self.next_word_index();
+        self.move_cursor(Direction::Right, target - self.raw_position(), screen);
+    }
+
     pub fn insert_newline(&mut self, screen: &Screen) {
         let pos = self.raw_position();
         let content = self.content.inner_mut();
