@@ -1,5 +1,5 @@
 use crate::buffer::Buffer;
-use crate::movement::Direction;
+use crate::movement::{Direction, Movement};
 use crate::ui::Screen;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -49,13 +49,13 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Right,
                         ..
                     }) => {
-                        buffer.move_cursor(Direction::Right, 1, screen);
+                        Movement::Cursor(1).do_move(buffer, screen);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Up, ..
                     }) => {
-                        buffer.move_cursor(Direction::Up, 1, screen);
+                        Movement::Line(-1).do_move(buffer, screen);
                     }
 
                     Event::Key(KeyEvent {
@@ -69,14 +69,14 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Left,
                         ..
                     }) => {
-                        buffer.move_cursor(Direction::Left, 1, screen);
+                        Movement::Cursor(-1).do_move(buffer, screen);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Down,
                         ..
                     }) => {
-                        buffer.move_cursor(Direction::Down, 1, screen);
+                        Movement::Line(1).do_move(buffer, screen);
                     }
 
                     Event::Key(KeyEvent {

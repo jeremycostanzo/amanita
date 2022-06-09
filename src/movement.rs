@@ -1,6 +1,61 @@
 use crate::buffer::Buffer;
 use crate::ui::Screen;
 
+#[derive(Clone, Copy, Debug)]
+pub enum Movement {
+    // Most basic movement: move the cursor by n characters in the line
+    Cursor(i64),
+    // Move n lines in the buffer
+    Line(i64),
+    // Move n words
+    Word(i64),
+}
+
+impl Movement {
+    pub fn do_move(self, buffer: &mut Buffer, screen: &Screen) {
+        match self {
+            Movement::Cursor(delta) => {
+                let position = buffer.x() as i64;
+                let target = (position + delta)
+                    .max(0)
+                    .min(buffer.current_line().len() as i64);
+
+                let boxed_delta = target - position;
+
+                let cursor_position = buffer.screen_cursor_position.x;
+
+                let cursor_position_delta = boxed_delta
+                    .max(-(cursor_position as i64))
+                    .min((screen.width - cursor_position - 1) as i64);
+
+                let offset_delta = boxed_delta - cursor_position_delta;
+
+                buffer.screen_cursor_position.x =
+                    (buffer.screen_cursor_position.x as i64 + cursor_position_delta) as u16;
+                buffer.offset.x = ((buffer.offset.x as i64) + offset_delta) as usize;
+            }
+            Movement::Line(delta) => {
+                let y = buffer.y() as i64;
+                let boxed_delta = delta
+                    .max(-y)
+                    .min(buffer.content.inner().lines().count() as i64 - y - 1);
+                let cursor_position = buffer.screen_cursor_position.y;
+                let cursor_position_delta = boxed_delta
+                    .max(-(cursor_position as i64))
+                    .min((screen.heigth - cursor_position - 1) as i64);
+                let offset_delta = boxed_delta - cursor_position_delta;
+
+                buffer.screen_cursor_position.y =
+                    (buffer.screen_cursor_position.y as i64 + cursor_position_delta) as u16;
+                buffer.offset.y = ((buffer.offset.y as i64) + offset_delta) as usize;
+                buffer.adjust_x(screen);
+            }
+
+            Movement::Word(_) => todo!(),
+        }
+    }
+}
+
 impl Buffer {
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
     fn adjust_x(&mut self, screen: &Screen) {
@@ -14,76 +69,32 @@ impl Buffer {
         }
     }
 
-    fn sub_any(cursor_position: &mut u16, offset: &mut usize, value: usize) {
-        let to_remove_to_cursor_position: u16 =
-            value.min(*cursor_position as usize).try_into().unwrap();
-        let to_remove_to_offset = value - to_remove_to_cursor_position as usize;
-
-        *cursor_position -= to_remove_to_cursor_position;
-        *offset = (*offset).saturating_sub(to_remove_to_offset);
-    }
-
-    fn sub_x(&mut self, x: usize, screen: &Screen) {
-        Buffer::sub_any(&mut self.screen_cursor_position.x, &mut self.offset.x, x);
-        self.adjust_x(screen);
-    }
-
-    fn sub_y(&mut self, y: usize, screen: &Screen) {
-        Buffer::sub_any(&mut self.screen_cursor_position.y, &mut self.offset.y, y);
-        self.adjust_x(screen);
-    }
-
-    fn add_any(cursor_position: &mut u16, offset: &mut usize, box_size: u16, value: usize) {
-        let to_add_to_cursor_position: u16 = (value
-            .min((box_size - *cursor_position - 1) as usize))
-        .try_into()
-        .unwrap();
-        let to_add_to_offset = value - to_add_to_cursor_position as usize;
-
-        *cursor_position += to_add_to_cursor_position;
-        *offset += to_add_to_offset;
-    }
-
-    fn add_x(&mut self, x: usize, screen: &Screen) {
-        let to_add = x.min(self.current_line().len() - self.x());
-        Buffer::add_any(
-            &mut self.screen_cursor_position.x,
-            &mut self.offset.x,
-            screen.width,
-            to_add,
-        );
-        self.adjust_x(screen);
-    }
-
-    fn add_y(&mut self, y: usize, screen: &Screen) {
-        let to_add = y.min(self.content.inner().lines().count() - self.y() - 1);
-        Buffer::add_any(
-            &mut self.screen_cursor_position.y,
-            &mut self.offset.y,
-            screen.heigth,
-            to_add,
-        );
-        self.adjust_x(screen);
-    }
-
-    pub fn move_cursor(&mut self, direction: Direction, value: usize, screen: &Screen) {
+    pub fn move_cursor(&mut self, direction: Direction, value: i64, screen: &Screen) {
         use Direction::*;
         match direction {
-            Up => self.sub_y(value, screen),
-            Left => self.sub_x(value, screen),
-            Down => self.add_y(value, screen),
-            Right => self.add_x(value, screen),
+            Up => Movement::Line(-(value)).do_move(self, screen),
+            Left => Movement::Cursor(-(value)).do_move(self, screen),
+            Down => Movement::Line(value).do_move(self, screen),
+            Right => Movement::Cursor(value).do_move(self, screen),
         };
     }
 
     pub fn move_to_next_word(&mut self, screen: &Screen) {
         let target = self.next_word_index();
-        self.move_cursor(Direction::Right, target - self.raw_position(), screen);
+        self.move_cursor(
+            Direction::Right,
+            (target - self.raw_position()) as i64,
+            screen,
+        );
     }
 
     pub fn move_to_previous_word(&mut self, screen: &Screen) {
         let target = self.previous_word_index();
-        self.move_cursor(Direction::Left, self.raw_position() - target, screen);
+        self.move_cursor(
+            Direction::Left,
+            (self.raw_position() - target) as i64,
+            screen,
+        );
     }
 
     pub fn insert_newline(&mut self, screen: &Screen) {
@@ -120,7 +131,7 @@ impl Buffer {
             let content = self.content.inner_mut();
             content.remove(pos - 1);
             self.move_cursor(Direction::Up, 1, screen);
-            self.move_cursor(Direction::Right, len, screen);
+            self.move_cursor(Direction::Right, len as i64, screen);
         } else {
             let content = self.content.inner_mut();
             let char = content.remove(pos - 1);
