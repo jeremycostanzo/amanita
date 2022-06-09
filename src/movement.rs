@@ -51,7 +51,11 @@ impl Movement {
                 buffer.adjust_x(screen);
             }
 
-            Movement::Word(_) => todo!(),
+            Movement::Word(delta) => {
+                let target = buffer.nth_word_index(delta);
+                let cursor_delta = target as i64 - buffer.raw_position() as i64;
+                Movement::Cursor(cursor_delta).do_move(buffer, screen);
+            }
         }
     }
 }
@@ -67,16 +71,6 @@ impl Buffer {
             self.screen_cursor_position.x =
                 (new_line_size - self.offset.x as usize).try_into().unwrap();
         }
-    }
-
-    pub fn move_to_next_word(&mut self, screen: &Screen) {
-        let target = self.next_word_index();
-        Movement::Cursor((target - self.raw_position()) as i64).do_move(self, screen);
-    }
-
-    pub fn move_to_previous_word(&mut self, screen: &Screen) {
-        let target = self.previous_word_index();
-        Movement::Cursor(target as i64 - self.raw_position() as i64).do_move(self, screen);
     }
 
     pub fn insert_newline(&mut self, screen: &Screen) {
