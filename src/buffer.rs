@@ -90,8 +90,7 @@ impl Buffer {
     /// if the cursor is on one of these groups, it will move to the next cursor that is not in it.
     /// If there is a whitespace, it moves to the first character that is not a whitespace after
     /// that.
-    pub fn next_word_index(&self) -> usize {
-        let position = self.raw_position();
+    fn next_word_index(&self, position: usize) -> usize {
         let inner = self.content.inner();
         let mut chars = inner.chars().skip(position);
         let char_type_on_cursor: CharacterType = chars.next().unwrap().into();
@@ -118,9 +117,7 @@ impl Buffer {
         inner.len() - 1
     }
 
-    pub fn previous_word_index(&self) -> usize {
-        let position = self.raw_position();
-
+    fn previous_word_index(&self, position: usize) -> usize {
         if position < 2 {
             return 0;
         }
@@ -149,6 +146,25 @@ impl Buffer {
             }
         }
         0
+    }
+
+    pub fn nth_word_index(&self, delta: i64) -> usize {
+        let mut position = self.raw_position();
+        match delta.cmp(&0) {
+            std::cmp::Ordering::Less => {
+                for _ in 0..(-delta) {
+                    position = self.previous_word_index(position);
+                }
+                position
+            }
+            std::cmp::Ordering::Equal => position,
+            std::cmp::Ordering::Greater => {
+                for _ in 0..delta {
+                    position = self.next_word_index(position);
+                }
+                position
+            }
+        }
     }
 
     pub async fn save(&self) -> anyhow::Result<()> {

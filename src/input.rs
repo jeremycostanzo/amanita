@@ -43,7 +43,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Right,
                         modifiers: KeyModifiers::CONTROL,
                     }) => {
-                        buffer.move_to_next_word(screen);
+                        Movement::Word(1).do_move(buffer, screen);
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Right,
@@ -62,7 +62,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Left,
                         modifiers: KeyModifiers::CONTROL,
                     }) => {
-                        buffer.move_to_previous_word(screen);
+                        Movement::Word(-1).do_move(buffer, screen);
                     }
 
                     Event::Key(KeyEvent {
