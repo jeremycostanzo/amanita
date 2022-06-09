@@ -4,7 +4,7 @@ use crate::ui::Screen;
 impl Buffer {
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
     fn adjust_x(&mut self, screen: &Screen) {
-        let new_line_size = self.content.inner().lines().nth(self.y()).unwrap().len();
+        let new_line_size = self.current_line().len();
         if self.offset.x > new_line_size {
             self.offset.x = new_line_size.saturating_sub(screen.width as usize);
         }
@@ -45,11 +45,12 @@ impl Buffer {
     }
 
     fn add_x(&mut self, x: usize, screen: &Screen) {
+        let to_add = x.min(self.current_line().len() - self.x());
         Buffer::add_any(
             &mut self.screen_cursor_position.x,
             &mut self.offset.x,
             screen.width,
-            x,
+            to_add,
         );
         self.adjust_x(screen);
     }
@@ -80,6 +81,11 @@ impl Buffer {
         self.move_cursor(Direction::Right, target - self.raw_position(), screen);
     }
 
+    pub fn move_to_previous_word(&mut self, screen: &Screen) {
+        let target = self.previous_word_index();
+        self.move_cursor(Direction::Left, self.raw_position() - target, screen);
+    }
+
     pub fn insert_newline(&mut self, screen: &Screen) {
         let pos = self.raw_position();
         let content = self.content.inner_mut();
@@ -94,7 +100,7 @@ impl Buffer {
         let content = self.content.inner_mut();
         content.insert(pos, c);
 
-        if self.screen_cursor_position.x == screen.width {
+        if self.screen_cursor_position.x >= screen.width - 1 {
             self.offset.x += 1;
         } else {
             self.screen_cursor_position.x += 1;
