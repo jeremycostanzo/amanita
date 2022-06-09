@@ -91,7 +91,8 @@ impl Buffer {
 
         let screen_lines = content.inner().lines().skip(offset.y).take(heigth.into());
 
-        let trimmed_screen_lines = screen_lines.map(|line| line.chars().take(width.into()));
+        let trimmed_screen_lines =
+            screen_lines.map(|line| line.chars().skip(offset.x).take(width.into()));
 
         let screen_content = trimmed_screen_lines
             .map(|chars| chars.map(Into::into).collect())

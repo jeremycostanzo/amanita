@@ -60,6 +60,13 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Left,
+                        modifiers: KeyModifiers::CONTROL,
+                    }) => {
+                        buffer.move_to_previous_word(screen);
+                    }
+
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Left,
                         ..
                     }) => {
                         buffer.move_cursor(Direction::Left, 1, screen);

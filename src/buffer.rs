@@ -81,6 +81,9 @@ impl Buffer {
         beginning_count + x
     }
 
+    pub fn current_line(&self) -> &str {
+        self.content.inner().lines().nth(self.y()).unwrap()
+    }
     /// I consider three "groups":
     /// [alphanumeric characters](char::is_alphanumeric)
     /// [punctuation](char::is_punctuation)
@@ -113,6 +116,39 @@ impl Buffer {
         }
 
         inner.len() - 1
+    }
+
+    pub fn previous_word_index(&self) -> usize {
+        let position = self.raw_position();
+
+        if position < 2 {
+            return 0;
+        }
+
+        let inner = self.content.inner();
+        let mut chars = inner[..position].chars().rev();
+        let char_type_before_cursor: CharacterType = chars.next().unwrap().into();
+
+        let mut locked_character_type = char_type_before_cursor;
+
+        for index in (0..(position - 2)).rev() {
+            let char_type_on_index: CharacterType = chars.next().unwrap().into();
+            match (locked_character_type, char_type_on_index) {
+                (CharacterType::Alphanumeric, CharacterType::Punctuation)
+                | (CharacterType::Punctuation, CharacterType::Alphanumeric)
+                | (CharacterType::Alphanumeric, CharacterType::Other)
+                | (CharacterType::Punctuation, CharacterType::Other) => return index + 2,
+
+                (CharacterType::Other, CharacterType::Other)
+                | (CharacterType::Alphanumeric, CharacterType::Alphanumeric)
+                | (CharacterType::Punctuation, CharacterType::Punctuation) => {}
+
+                (CharacterType::Other, alpha_or_punctuation) => {
+                    locked_character_type = alpha_or_punctuation
+                }
+            }
+        }
+        0
     }
 
     pub async fn save(&self) -> anyhow::Result<()> {
