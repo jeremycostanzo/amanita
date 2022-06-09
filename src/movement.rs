@@ -69,39 +69,21 @@ impl Buffer {
         }
     }
 
-    pub fn move_cursor(&mut self, direction: Direction, value: i64, screen: &Screen) {
-        use Direction::*;
-        match direction {
-            Up => Movement::Line(-(value)).do_move(self, screen),
-            Left => Movement::Cursor(-(value)).do_move(self, screen),
-            Down => Movement::Line(value).do_move(self, screen),
-            Right => Movement::Cursor(value).do_move(self, screen),
-        };
-    }
-
     pub fn move_to_next_word(&mut self, screen: &Screen) {
         let target = self.next_word_index();
-        self.move_cursor(
-            Direction::Right,
-            (target - self.raw_position()) as i64,
-            screen,
-        );
+        Movement::Cursor((target - self.raw_position()) as i64).do_move(self, screen);
     }
 
     pub fn move_to_previous_word(&mut self, screen: &Screen) {
         let target = self.previous_word_index();
-        self.move_cursor(
-            Direction::Left,
-            (self.raw_position() - target) as i64,
-            screen,
-        );
+        Movement::Cursor(target as i64 - self.raw_position() as i64).do_move(self, screen);
     }
 
     pub fn insert_newline(&mut self, screen: &Screen) {
         let pos = self.raw_position();
         let content = self.content.inner_mut();
         content.insert(pos, '\n');
-        self.move_cursor(Direction::Down, 1, screen);
+        Movement::Line(1).do_move(self, screen);
         self.offset.x = 0;
         self.screen_cursor_position.x = 0;
     }
@@ -130,8 +112,8 @@ impl Buffer {
 
             let content = self.content.inner_mut();
             content.remove(pos - 1);
-            self.move_cursor(Direction::Up, 1, screen);
-            self.move_cursor(Direction::Right, len as i64, screen);
+            Movement::Line(-1).do_move(self, screen);
+            Movement::Cursor(len as i64).do_move(self, screen);
         } else {
             let content = self.content.inner_mut();
             let char = content.remove(pos - 1);
@@ -139,17 +121,10 @@ impl Buffer {
                 content.remove(pos - 2);
                 content.remove(pos - 3);
                 content.remove(pos - 4);
-                self.move_cursor(Direction::Left, 4, screen);
+                Movement::Cursor(-4).do_move(self, screen);
             } else {
-                self.move_cursor(Direction::Left, 1, screen);
+                Movement::Cursor(-1).do_move(self, screen);
             }
         }
     }
-}
-
-pub enum Direction {
-    Up,
-    Right,
-    Down,
-    Left,
 }

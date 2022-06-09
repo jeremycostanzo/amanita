@@ -1,5 +1,5 @@
 use crate::buffer::Buffer;
-use crate::movement::{Direction, Movement};
+use crate::movement::Movement;
 use crate::ui::Screen;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
