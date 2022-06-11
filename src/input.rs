@@ -1,6 +1,5 @@
-use crate::buffer::Buffer;
 use crate::movement::Movement;
-use crate::ui::Screen;
+use crate::Editor;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use futures::{future::FutureExt, StreamExt};
@@ -9,7 +8,7 @@ use anyhow::Result;
 
 use crossterm::event::{Event, EventStream};
 
-pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()> {
+pub async fn handle_input(editor: &mut Editor) -> Result<()> {
     let mut reader = EventStream::new();
 
     loop {
@@ -22,13 +21,13 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Char('s'),
                         modifiers: KeyModifiers::CONTROL,
                     }) => {
-                        buffer.save().await?;
+                        editor.save().await?;
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Char(c),
                         modifiers: KeyModifiers::NONE,
                     }) => {
-                        buffer.insert_char(c, screen);
+                        editor.insert_char(c);
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Char(c),
@@ -36,61 +35,61 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     }) => {
                         let uppercase_chars = c.to_uppercase().collect::<Vec<_>>();
                         if uppercase_chars.len() == 1 {
-                            buffer.insert_char(uppercase_chars[0], screen);
+                            editor.insert_char(uppercase_chars[0]);
                         }
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Right,
                         modifiers: KeyModifiers::CONTROL,
                     }) => {
-                        Movement::Word(1).do_move(buffer, screen);
+                        Movement::Word(1).do_move(editor);
                     }
                     Event::Key(KeyEvent {
                         code: KeyCode::Right,
                         ..
                     }) => {
-                        Movement::Cursor(1).do_move(buffer, screen);
+                        Movement::Cursor(1).do_move(editor);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Up, ..
                     }) => {
-                        Movement::Line(-1).do_move(buffer, screen);
+                        Movement::Line(-1).do_move(editor);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Left,
                         modifiers: KeyModifiers::CONTROL,
                     }) => {
-                        Movement::Word(-1).do_move(buffer, screen);
+                        Movement::Word(-1).do_move(editor);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Left,
                         ..
                     }) => {
-                        Movement::Cursor(-1).do_move(buffer, screen);
+                        Movement::Cursor(-1).do_move(editor);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Down,
                         ..
                     }) => {
-                        Movement::Line(1).do_move(buffer, screen);
+                        Movement::Line(1).do_move(editor);
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Backspace,
                         ..
                     }) => {
-                        buffer.delete_char(screen);
+                        editor.delete_char();
                     }
 
                     Event::Key(KeyEvent {
                         code: KeyCode::Tab, ..
                     }) => {
                         for _ in 0..4 {
-                            buffer.insert_char('\t', screen);
+                            editor.insert_char('\t');
                         }
                     }
 
@@ -98,7 +97,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                         code: KeyCode::Enter,
                         ..
                     }) => {
-                        buffer.insert_newline(screen);
+                        editor.insert_newline();
                     }
 
                     Event::Key(KeyEvent {
@@ -109,7 +108,7 @@ pub async fn handle_input(buffer: &mut Buffer, screen: &mut Screen) -> Result<()
                     }
                     _ => {}
                 };
-                buffer.render(screen)?;
+                editor.render()?;
             }
             Some(Err(e)) => println!("Error: {:?}\r", e),
             None => continue,

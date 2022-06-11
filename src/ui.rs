@@ -1,5 +1,6 @@
 use crate::buffer::Buffer;
 use crate::buffer::CursorPosition;
+use crate::Editor;
 use crossterm::QueueableCommand;
 use crossterm::{
     cursor, queue,
@@ -29,13 +30,13 @@ impl ScreenContent {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Screen {
     pub text_start_x: u16,
     pub text_start_y: u16,
     pub width: u16,
     pub heigth: u16,
-    pub terminal: String,
+    terminal: String,
 }
 
 impl Screen {
@@ -52,6 +53,12 @@ impl Screen {
             heigth,
             terminal,
         })
+    }
+}
+
+impl Default for Screen {
+    fn default() -> Self {
+        Self::new().unwrap()
     }
 }
 
@@ -143,19 +150,24 @@ impl ScreenContent {
     }
 }
 
-impl Buffer {
-    pub fn render(&self, screen: &mut Screen) -> Result<()> {
-        let screen_content = self.display_on_screen(
+impl Editor {
+    pub fn render(&mut self) -> Result<()> {
+        let buffer = self.current_buffer();
+        let screen = self.screen();
+        let screen_content = buffer.display_on_screen(
             screen.width - screen.text_start_x,
             screen.heigth - screen.text_start_y,
         );
 
-        queue!(screen, cursor::Hide)?;
-        screen_content.display(screen)?;
-        let CursorPosition { x, y } = self.screen_cursor_position;
-        queue!(screen, cursor::MoveTo(x, y))?;
-        queue!(screen, cursor::Show)?;
-        screen.flush()?;
+        let CursorPosition { x, y } = buffer.screen_cursor_position;
+
+        let screen_mut = self.screen_mut();
+
+        queue!(screen_mut, cursor::Hide)?;
+        screen_content.display(screen_mut)?;
+        queue!(screen_mut, cursor::MoveTo(x, y))?;
+        queue!(screen_mut, cursor::Show)?;
+        screen_mut.flush()?;
 
         Ok(())
     }
