@@ -1,5 +1,4 @@
-use crate::buffer::Buffer;
-use crate::ui::Screen;
+use crate::Editor;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {
@@ -12,13 +11,15 @@ pub enum Movement {
 }
 
 impl Movement {
-    pub fn do_move(self, buffer: &mut Buffer, screen: &Screen) {
+    pub fn do_move(self, editor: &mut Editor) {
         match self {
             Movement::Cursor(delta) => {
+                let line_len = editor.current_buffer().current_line().len() as i64;
+                let width = editor.screen().width;
+
+                let buffer = editor.current_buffer_mut();
                 let position = buffer.x() as i64;
-                let target = (position + delta)
-                    .max(0)
-                    .min(buffer.current_line().len() as i64);
+                let target = (position + delta).max(0).min(line_len);
 
                 let boxed_delta = target - position;
 
@@ -26,7 +27,7 @@ impl Movement {
 
                 let cursor_position_delta = boxed_delta
                     .max(-(cursor_position as i64))
-                    .min((screen.width - cursor_position - 1) as i64);
+                    .min((width - cursor_position - 1) as i64);
 
                 let offset_delta = boxed_delta - cursor_position_delta;
 
@@ -35,6 +36,10 @@ impl Movement {
                 buffer.offset.x = ((buffer.offset.x as i64) + offset_delta) as usize;
             }
             Movement::Line(delta) => {
+                let heigth = editor.screen().heigth;
+
+                let buffer = editor.current_buffer_mut();
+
                 let y = buffer.y() as i64;
                 let boxed_delta = delta
                     .max(-y)
@@ -42,82 +47,89 @@ impl Movement {
                 let cursor_position = buffer.screen_cursor_position.y;
                 let cursor_position_delta = boxed_delta
                     .max(-(cursor_position as i64))
-                    .min((screen.heigth - cursor_position - 1) as i64);
+                    .min((heigth - cursor_position - 1) as i64);
                 let offset_delta = boxed_delta - cursor_position_delta;
 
                 buffer.screen_cursor_position.y =
                     (buffer.screen_cursor_position.y as i64 + cursor_position_delta) as u16;
                 buffer.offset.y = ((buffer.offset.y as i64) + offset_delta) as usize;
-                buffer.adjust_x(screen);
+                editor.adjust_x();
             }
 
             Movement::Word(delta) => {
+                let buffer = editor.current_buffer();
                 let target = buffer.nth_word_index(delta);
                 let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::Cursor(cursor_delta).do_move(buffer, screen);
+                Movement::Cursor(cursor_delta).do_move(editor);
             }
         }
     }
 }
 
-impl Buffer {
+impl Editor {
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
-    fn adjust_x(&mut self, screen: &Screen) {
-        let new_line_size = self.current_line().len();
-        if self.offset.x > new_line_size {
-            self.offset.x = new_line_size.saturating_sub(screen.width as usize);
+    fn adjust_x(&mut self) {
+        let width = self.screen().width;
+        let buffer = self.current_buffer_mut();
+        let new_line_size = buffer.current_line().len();
+        if buffer.offset.x > new_line_size {
+            buffer.offset.x = new_line_size.saturating_sub(width as usize);
         }
-        if self.x() > new_line_size {
-            self.screen_cursor_position.x =
-                (new_line_size - self.offset.x as usize).try_into().unwrap();
+        if buffer.x() > new_line_size {
+            buffer.screen_cursor_position.x = (new_line_size - buffer.offset.x as usize)
+                .try_into()
+                .unwrap();
         }
     }
 
-    pub fn insert_newline(&mut self, screen: &Screen) {
-        let pos = self.raw_position();
-        let content = self.content.inner_mut();
+    pub fn insert_newline(&mut self) {
+        let buffer = self.current_buffer();
+        let pos = buffer.raw_position();
+
+        Movement::Line(1).do_move(self);
+
+        let buffer = self.current_buffer_mut();
+        let content = buffer.content.inner_mut();
         content.insert(pos, '\n');
-        Movement::Line(1).do_move(self, screen);
-        self.offset.x = 0;
-        self.screen_cursor_position.x = 0;
+        buffer.offset.x = 0;
+        buffer.screen_cursor_position.x = 0;
     }
 
-    pub fn insert_char(&mut self, c: char, screen: &Screen) {
-        let pos = self.raw_position();
-        let content = self.content.inner_mut();
+    pub fn insert_char(&mut self, c: char) {
+        let buffer = self.current_buffer_mut();
+        let pos = buffer.raw_position();
+        let content = buffer.content.inner_mut();
+
         content.insert(pos, c);
 
-        if self.screen_cursor_position.x >= screen.width - 1 {
-            self.offset.x += 1;
-        } else {
-            self.screen_cursor_position.x += 1;
-        }
+        Movement::Cursor(1).do_move(self);
     }
 
-    pub fn delete_char(&mut self, screen: &Screen) {
-        let pos = self.raw_position();
+    pub fn delete_char(&mut self) {
+        let buffer = self.current_buffer_mut();
+        let pos = buffer.raw_position();
         if pos == 0 {
             return;
         }
 
-        if self.x() == 0 {
-            let y = self.y();
-            let len = self.content.inner().lines().nth(y - 1).unwrap().len();
+        if buffer.x() == 0 {
+            let y = buffer.y();
+            let len = buffer.content.inner().lines().nth(y - 1).unwrap().len();
 
-            let content = self.content.inner_mut();
+            let content = buffer.content.inner_mut();
             content.remove(pos - 1);
-            Movement::Line(-1).do_move(self, screen);
-            Movement::Cursor(len as i64).do_move(self, screen);
+            Movement::Line(-1).do_move(self);
+            Movement::Cursor(len as i64).do_move(self);
         } else {
-            let content = self.content.inner_mut();
+            let content = buffer.content.inner_mut();
             let char = content.remove(pos - 1);
             if char == '\t' {
                 content.remove(pos - 2);
                 content.remove(pos - 3);
                 content.remove(pos - 4);
-                Movement::Cursor(-4).do_move(self, screen);
+                Movement::Cursor(-4).do_move(self);
             } else {
-                Movement::Cursor(-1).do_move(self, screen);
+                Movement::Cursor(-1).do_move(self);
             }
         }
     }
