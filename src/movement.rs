@@ -1,4 +1,4 @@
-use crate::Editor;
+use crate::editor::Editor;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {

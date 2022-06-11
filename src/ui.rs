@@ -1,6 +1,6 @@
 use crate::buffer::Buffer;
 use crate::buffer::CursorPosition;
-use crate::Editor;
+use crate::editor::Editor;
 use crossterm::QueueableCommand;
 use crossterm::{
     cursor, queue,

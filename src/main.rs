@@ -1,6 +1,6 @@
 use amanita::buffer::Buffer;
 use amanita::input::handle_input;
-use amanita::Editor;
+use amanita::EditorBuilder;
 use crossterm::cursor;
 use crossterm::QueueableCommand;
 use std::env;
@@ -20,8 +20,10 @@ async fn main() -> Result<()> {
     let file_path = Path::new(&file_name);
     let buffers = vec![Buffer::from_file(file_path).await];
 
-    let mut editor: Editor = Default::default();
-    editor.with_line_wrap(false).with_buffers(buffers);
+    let mut editor = EditorBuilder::new()
+        .buffers(buffers)
+        .line_wrap(false)
+        .build();
 
     stdout().queue(cursor::MoveTo(0, 0))?.flush()?;
     editor.render()?;

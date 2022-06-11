@@ -1,5 +1,5 @@
+use crate::editor::Editor;
 use crate::movement::Movement;
-use crate::Editor;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use futures::{future::FutureExt, StreamExt};
