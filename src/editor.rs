@@ -7,7 +7,6 @@ pub struct Editor {
     pub screen: Screen,
     pub clipboard: String,
     pub current_buffer_index: usize,
-    pub line_wrap: bool,
 }
 
 impl Editor {
@@ -31,7 +30,6 @@ impl Editor {
 #[derive(Debug, Default, Clone)]
 pub struct EditorBuilder {
     pub buffers: Option<Vec<Buffer>>,
-    pub line_wrap: Option<bool>,
 }
 
 impl EditorBuilder {
@@ -42,14 +40,9 @@ impl EditorBuilder {
         self.buffers = Some(buffers);
         self
     }
-    pub fn line_wrap(&mut self, line_wrap: bool) -> &mut Self {
-        self.line_wrap = Some(line_wrap);
-        self
-    }
     pub fn build(&mut self) -> Editor {
         Editor {
             buffers: self.buffers.take().unwrap(),
-            line_wrap: self.line_wrap.take().unwrap_or(false),
             ..Default::default()
         }
     }
