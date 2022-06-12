@@ -1,4 +1,5 @@
 use crate::buffer::Buffer;
+use crate::modes::Mode;
 use crate::ui::Screen;
 
 #[derive(Debug, Default, Clone)]
@@ -7,6 +8,7 @@ pub struct Editor {
     pub screen: Screen,
     pub clipboard: String,
     pub current_buffer_index: usize,
+    pub mode: Mode,
 }
 
 impl Editor {
