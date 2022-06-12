@@ -9,6 +9,10 @@ pub enum Movement {
     Line(i64),
     // Move n words
     Word(i64),
+    // Move the cursor by n characters in the buffer
+    CursorUnbounded(i64),
+    // Go to
+    ToRaw(usize),
 }
 
 impl Movement {
@@ -36,6 +40,34 @@ impl Movement {
                     (buffer.screen_cursor_position.x as i64 + cursor_position_delta) as u16;
                 buffer.offset.x = ((buffer.offset.x as i64) + offset_delta) as usize;
             }
+            Movement::CursorUnbounded(delta) => {
+                let buffer = editor.current_buffer();
+                let content = buffer.content.inner();
+                let current_position = editor.current_buffer().raw_position() as i64;
+                let target = current_position + delta;
+                let min = target.min(current_position).max(0) as usize;
+                let max = (target.max(current_position) as usize).min(content.len());
+                let bounded_content = &buffer.content.inner()[min..(max + 1)];
+                let lines_count = bounded_content.matches('\n').count();
+
+                let lines_delta = if current_position > target {
+                    -(lines_count as i64)
+                } else {
+                    lines_count as i64
+                };
+
+                Movement::Line(lines_delta).do_move(editor);
+
+                let current_position = editor.current_buffer().raw_position() as i64;
+                let cursor_delta = target - current_position;
+
+                Movement::Cursor(cursor_delta).do_move(editor);
+            }
+            Movement::ToRaw(raw_position) => {
+                let current_raw_position = editor.current_buffer().raw_position() as i64;
+                let delta = raw_position as i64 - current_raw_position;
+                Movement::CursorUnbounded(delta).do_move(editor)
+            }
             Movement::Line(delta) => {
                 let heigth = editor.screen().heigth;
 
@@ -61,10 +93,11 @@ impl Movement {
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_index(delta);
                 let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::Cursor(cursor_delta).do_move(editor);
+                Movement::CursorUnbounded(cursor_delta).do_move(editor);
             }
         }
     }
+
     pub fn visual_move(self, editor: &mut Editor) {
         if editor.mode != Mode::Visual {
             unreachable!()
@@ -73,6 +106,27 @@ impl Movement {
         let new_raw_cursor_position = editor.current_buffer().raw_position();
         let mut last_selection = &mut editor.last_selection;
         last_selection.end = new_raw_cursor_position;
+    }
+
+    pub fn delete(self, editor: &mut Editor) {
+        let position = editor.current_buffer().raw_position();
+        self.do_move(editor);
+        let position_after_move = editor.current_buffer().raw_position();
+
+        let from = position.min(position_after_move);
+        let to = if position > position_after_move {
+            position
+        } else {
+            position_after_move + 1
+        };
+
+        editor
+            .current_buffer_mut()
+            .content
+            .inner_mut()
+            .replace_range(from..to, "");
+
+        Movement::ToRaw(from).do_move(editor);
     }
 }
 

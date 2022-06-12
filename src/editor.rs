@@ -1,5 +1,6 @@
 use crate::buffer::Buffer;
 use crate::modes::Mode;
+use crate::movement::Movement;
 use crate::ui::Screen;
 
 #[derive(Debug, Default, Clone)]
@@ -47,6 +48,18 @@ impl Editor {
     }
     pub async fn save(&self) -> anyhow::Result<()> {
         self.current_buffer().save().await
+    }
+    pub fn delete_selection(&mut self) {
+        if self.mode != Mode::Visual {
+            unreachable!()
+        }
+        let start = self.last_selection.start;
+        let end = self.last_selection.end;
+        let min = start.min(end);
+        let max = start.max(end);
+        Movement::ToRaw(min).do_move(self);
+        Movement::ToRaw(max).delete(self);
+        self.mode = Mode::Normal;
     }
 }
 

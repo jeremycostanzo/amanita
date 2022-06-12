@@ -12,6 +12,12 @@ pub async fn handle_event(
 ) -> anyhow::Result<Option<LeaveProgram>> {
     match event {
         Event::Key(KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            editor.delete_selection();
+        }
+        Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::CONTROL,
         }) => {
