@@ -69,8 +69,10 @@ impl Buffer {
     }
 
     pub fn raw_position(&self) -> usize {
-        let x = self.x();
-        let y = self.y();
+        self.raw_position_coordinates(self.x(), self.y())
+    }
+
+    pub fn raw_position_coordinates(&self, x: usize, y: usize) -> usize {
         let lines = &mut self.content.inner().lines();
 
         let beginning_lines = lines.take(y);

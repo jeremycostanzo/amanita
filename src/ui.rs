@@ -1,24 +1,20 @@
-use crate::buffer::Buffer;
 use crate::buffer::CursorPosition;
 use crate::editor::Editor;
+use crate::modes::Mode;
 use crossterm::QueueableCommand;
 use crossterm::{
     cursor, queue,
-    style::{self, Stylize},
+    style::{self, Color, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 use std::io::{self, stdout, Write};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Cell {
     pub symbol: char,
-}
-
-impl From<char> for Cell {
-    fn from(symbol: char) -> Self {
-        Self { symbol }
-    }
+    pub fg: Color,
+    pub bg: Color,
 }
 
 use anyhow::Result;
@@ -91,18 +87,52 @@ impl Drop for Screen {
     }
 }
 
-impl Buffer {
-    fn display_on_screen(&self, width: u16, heigth: u16) -> ScreenContent {
-        let content = &self.content;
-        let offset = &self.offset;
+impl Editor {
+    fn screen_contents(&self) -> ScreenContent {
+        let width = self.screen.width;
+        let heigth = self.screen.heigth;
+        let buffer = self.current_buffer();
 
-        let screen_lines = content.inner().lines().skip(offset.y).take(heigth.into());
+        let content = &buffer.content;
+        let offset = &buffer.offset;
 
-        let trimmed_screen_lines =
-            screen_lines.map(|line| line.chars().skip(offset.x).take(width.into()));
+        let screen_lines = content
+            .inner()
+            .lines()
+            .enumerate()
+            .skip(offset.y)
+            .take(heigth.into());
+
+        let trimmed_screen_lines = screen_lines.map(|(y, line)| {
+            line.chars()
+                .enumerate()
+                .skip(offset.x)
+                .take(width.into())
+                .map(move |(x, char)| (x, y, char))
+        });
 
         let screen_content = trimmed_screen_lines
-            .map(|chars| chars.map(Into::into).collect())
+            .map(|lines| {
+                lines
+                    .map(|(x, y, char)| {
+                        let (fg_color, bg_color) = if self.mode == Mode::Visual {
+                            let raw_position = buffer.raw_position_coordinates(x, y);
+                            if self.last_selection.contains(raw_position) {
+                                (Color::White, Color::DarkMagenta)
+                            } else {
+                                (Color::White, Color::Black)
+                            }
+                        } else {
+                            (Color::White, Color::Black)
+                        };
+                        Cell {
+                            symbol: char,
+                            fg: fg_color,
+                            bg: bg_color,
+                        }
+                    })
+                    .collect()
+            })
             .collect();
 
         ScreenContent(screen_content)
@@ -113,7 +143,9 @@ impl Cell {
     fn prepare_display(&self, x: u16, y: u16, screen: &mut Screen) -> Result<()> {
         screen
             .queue(cursor::MoveTo(x, y))?
-            .queue(style::PrintStyledContent(self.symbol.white()))?;
+            .queue(style::PrintStyledContent(
+                self.symbol.with(self.fg).on(self.bg),
+            ))?;
 
         if self.symbol == '\t' {
             for _ in 0..3 {
@@ -125,10 +157,17 @@ impl Cell {
     }
 }
 
-impl ScreenContent {
-    fn display(&self, screen: &mut Screen) -> Result<()> {
+impl Editor {
+    pub fn render(&mut self) -> Result<()> {
+        let CursorPosition { x, y } = self.current_buffer().screen_cursor_position;
+        let screen_contents = self.screen_contents();
+        let screen = &mut self.screen;
+
+        queue!(screen, cursor::Hide)?;
+
         let mut lines_printed = 0;
-        for (y, line) in self.inner().iter().enumerate() {
+
+        for (y, line) in screen_contents.inner().iter().enumerate() {
             let y = y as u16 + screen.text_start_y;
             screen
                 .queue(cursor::MoveTo(0, y))?
@@ -141,33 +180,17 @@ impl ScreenContent {
             }
             lines_printed += 1;
         }
+
+        // Cleanup of the bottom of the screen
         for y in lines_printed..screen.heigth {
             screen
                 .queue(cursor::MoveTo(0, y))?
                 .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
         }
-        Ok(())
-    }
-}
 
-impl Editor {
-    pub fn render(&mut self) -> Result<()> {
-        let buffer = self.current_buffer();
-        let screen = self.screen();
-        let screen_content = buffer.display_on_screen(
-            screen.width - screen.text_start_x,
-            screen.heigth - screen.text_start_y,
-        );
-
-        let CursorPosition { x, y } = buffer.screen_cursor_position;
-
-        let screen_mut = self.screen_mut();
-
-        queue!(screen_mut, cursor::Hide)?;
-        screen_content.display(screen_mut)?;
-        queue!(screen_mut, cursor::MoveTo(x, y))?;
-        queue!(screen_mut, cursor::Show)?;
-        screen_mut.flush()?;
+        queue!(screen, cursor::MoveTo(x, y))?;
+        queue!(screen, cursor::Show)?;
+        screen.flush()?;
 
         Ok(())
     }

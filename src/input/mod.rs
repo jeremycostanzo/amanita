@@ -25,7 +25,7 @@ pub async fn handle_input(editor: &mut Editor) -> Result<()> {
                 let leave_program = match mode {
                     Mode::Insert => insert::handle_event(event, editor).await,
                     Mode::Normal => normal::handle_event(event, editor).await,
-                    Mode::Visual => todo!(),
+                    Mode::Visual => visual::handle_event(event, editor).await,
                 }?;
 
                 if let Some(LeaveProgram) = leave_program {

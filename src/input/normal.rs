@@ -1,4 +1,4 @@
-use crate::editor::Editor;
+use crate::editor::{Editor, Selection};
 use crate::modes::Mode;
 use crate::movement::Movement;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -97,6 +97,8 @@ pub async fn handle_event(
             code: KeyCode::Char('v'),
             modifiers: KeyModifiers::NONE,
         }) => {
+            let raw_position = editor.current_buffer().raw_position();
+            editor.last_selection = Selection::at_cursor(raw_position);
             editor.mode = Mode::Visual;
         }
 

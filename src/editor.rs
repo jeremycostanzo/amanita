@@ -9,6 +9,27 @@ pub struct Editor {
     pub clipboard: String,
     pub current_buffer_index: usize,
     pub mode: Mode,
+    pub last_selection: Selection,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Selection {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Selection {
+    pub fn at_cursor(raw_position: usize) -> Self {
+        Self {
+            start: raw_position,
+            end: raw_position,
+        }
+    }
+    pub fn contains(&self, raw_position: usize) -> bool {
+        let min = self.start.min(self.end);
+        let max = self.start.max(self.end);
+        min <= raw_position && raw_position <= max
+    }
 }
 
 impl Editor {

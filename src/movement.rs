@@ -1,4 +1,5 @@
 use crate::editor::Editor;
+use crate::modes::Mode;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {
@@ -63,6 +64,15 @@ impl Movement {
                 Movement::Cursor(cursor_delta).do_move(editor);
             }
         }
+    }
+    pub fn visual_move(self, editor: &mut Editor) {
+        if editor.mode != Mode::Visual {
+            unreachable!()
+        }
+        self.do_move(editor);
+        let new_raw_cursor_position = editor.current_buffer().raw_position();
+        let mut last_selection = &mut editor.last_selection;
+        last_selection.end = new_raw_cursor_position;
     }
 }
 
