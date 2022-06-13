@@ -1,3 +1,4 @@
+use crate::OutOfBounds;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -83,8 +84,12 @@ impl Buffer {
         beginning_count + x
     }
 
-    pub fn current_line(&self) -> &str {
-        self.content.inner().lines().nth(self.y()).unwrap()
+    pub fn current_line(&self) -> Result<&str> {
+        self.content
+            .inner()
+            .lines()
+            .nth(self.y())
+            .ok_or_else(|| OutOfBounds(self.y()).into())
     }
     /// I consider three "groups":
     /// [alphanumeric characters](char::is_alphanumeric)
@@ -183,19 +188,18 @@ impl Buffer {
         Ok(())
     }
 
-    pub async fn from_file(path: &Path) -> Self {
+    pub async fn from_file(path: &Path) -> Result<Self> {
         let content = fs::read_to_string(path)
             .await
             .unwrap_or_else(|_| Default::default())
-            .parse()
-            .unwrap();
+            .parse()?;
 
-        Buffer {
+        Ok(Buffer {
             content,
             screen_cursor_position: Default::default(),
             offset: Default::default(),
             file_name: Some(path.to_owned()),
-        }
+        })
     }
 }
 

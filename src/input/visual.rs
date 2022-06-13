@@ -15,82 +15,82 @@ pub async fn handle_event(
             code: KeyCode::Char('d'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            editor.delete_selection();
+            editor.delete_selection()?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::CONTROL,
         }) => {
-            Movement::Word(1).visual_move(editor);
+            Movement::Word(1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('w'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Word(1).visual_move(editor);
+            Movement::Word(1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Right,
             ..
         }) => {
-            Movement::Cursor(1).visual_move(editor);
+            Movement::Cursor(1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('l'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Cursor(1).visual_move(editor);
+            Movement::Cursor(1).visual_move(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Up, ..
         }) => {
-            Movement::Line(-1).visual_move(editor);
+            Movement::Line(-1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('k'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Line(-1).visual_move(editor);
+            Movement::Line(-1).visual_move(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Left,
             modifiers: KeyModifiers::CONTROL,
         }) => {
-            Movement::Word(-1).visual_move(editor);
+            Movement::Word(-1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('b'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Word(-1).visual_move(editor);
+            Movement::Word(-1).visual_move(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Left,
             ..
         }) => {
-            Movement::Cursor(-1).visual_move(editor);
+            Movement::Cursor(-1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('h'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Cursor(-1).visual_move(editor);
+            Movement::Cursor(-1).visual_move(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Down,
             ..
         }) => {
-            Movement::Line(1).visual_move(editor);
+            Movement::Line(1).visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('j'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Line(1).visual_move(editor);
+            Movement::Line(1).visual_move(editor)?;
         }
 
         Event::Key(KeyEvent {

@@ -18,9 +18,9 @@ async fn main() -> Result<()> {
     let file_name = &args[1];
 
     let file_path = Path::new(&file_name);
-    let buffers = vec![Buffer::from_file(file_path).await];
+    let buffers = vec![Buffer::from_file(file_path).await?];
 
-    let mut editor = EditorBuilder::new().buffers(buffers).build();
+    let mut editor = EditorBuilder::new().buffers(buffers).build()?;
 
     stdout().queue(cursor::MoveTo(0, 0))?.flush()?;
     editor.render()?;

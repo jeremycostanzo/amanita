@@ -2,6 +2,7 @@ use crate::buffer::Buffer;
 use crate::modes::Mode;
 use crate::movement::Movement;
 use crate::ui::Screen;
+use anyhow::Result;
 
 #[derive(Debug, Default, Clone)]
 pub struct Editor {
@@ -46,10 +47,10 @@ impl Editor {
     pub fn screen(&self) -> &Screen {
         &self.screen
     }
-    pub async fn save(&self) -> anyhow::Result<()> {
+    pub async fn save(&self) -> Result<()> {
         self.current_buffer().save().await
     }
-    pub fn delete_selection(&mut self) {
+    pub fn delete_selection(&mut self) -> Result<()> {
         if self.mode != Mode::Visual {
             unreachable!()
         }
@@ -57,9 +58,10 @@ impl Editor {
         let end = self.last_selection.end;
         let min = start.min(end);
         let max = start.max(end);
-        Movement::ToRaw(min).do_move(self);
-        Movement::ToRaw(max).delete(self);
+        Movement::ToRaw(min).do_move(self)?;
+        Movement::ToRaw(max).delete(self)?;
         self.mode = Mode::Normal;
+        Ok(())
     }
 }
 
@@ -67,6 +69,16 @@ impl Editor {
 pub struct EditorBuilder {
     pub buffers: Option<Vec<Buffer>>,
 }
+
+#[derive(Debug)]
+struct EmptyBuffers;
+impl std::fmt::Display for EmptyBuffers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cannot build an editor without buffers")
+    }
+}
+
+impl std::error::Error for EmptyBuffers {}
 
 impl EditorBuilder {
     pub fn new() -> Self {
@@ -76,10 +88,10 @@ impl EditorBuilder {
         self.buffers = Some(buffers);
         self
     }
-    pub fn build(&mut self) -> Editor {
-        Editor {
-            buffers: self.buffers.take().unwrap(),
+    pub fn build(&mut self) -> Result<Editor> {
+        Ok(Editor {
+            buffers: self.buffers.take().ok_or(EmptyBuffers)?,
             ..Default::default()
-        }
+        })
     }
 }
