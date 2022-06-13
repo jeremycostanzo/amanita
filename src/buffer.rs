@@ -93,9 +93,15 @@ impl Buffer {
             .ok_or_else(|| OutOfBounds(self.y()))
             .context("Current line")
     }
+
     pub fn current_line_length(&self) -> Result<usize> {
         Ok(self.current_line().context("Current line length")?.len())
     }
+
+    pub fn lines_count(&self) -> Result<usize> {
+        Ok(self.content.inner().lines().count())
+    }
+
     /// I consider three "groups":
     /// [alphanumeric characters](char::is_alphanumeric)
     /// [punctuation](char::is_punctuation)

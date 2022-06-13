@@ -21,7 +21,12 @@ impl Movement {
     pub fn do_move(self, editor: &mut Editor) -> Result<()> {
         match self {
             Movement::Cursor(delta) => {
-                let line_len = editor.current_buffer().current_line()?.len() as i64;
+                let line_len = editor
+                    .current_buffer()
+                    .current_line()
+                    .with_context(|| format!("Move cursor of {}", delta))?
+                    .len() as i64;
+
                 let width = editor.screen().width;
 
                 let buffer = editor.current_buffer_mut();
@@ -135,6 +140,7 @@ impl Movement {
             .inner_mut()
             .replace_range(from..boxed_to, "");
 
+        editor.adjust_y()?;
         editor.adjust_x()?;
         Movement::ToRaw(from).do_move(editor)?;
         Ok(())
@@ -146,13 +152,30 @@ impl Editor {
     fn adjust_x(&mut self) -> Result<()> {
         let width = self.screen().width;
         let buffer = self.current_buffer_mut();
-        let new_line_size = buffer.current_line().context("Current line length")?.len();
+        let new_line_size = buffer.current_line().context("Adjust x")?.len();
         if buffer.offset.x > new_line_size {
             buffer.offset.x = new_line_size.saturating_sub(width as usize);
         }
         if buffer.x() > new_line_size {
             buffer.screen_cursor_position.x =
                 (new_line_size - buffer.offset.x as usize).try_into()?;
+        }
+        Ok(())
+    }
+
+    // Used after a deletion to ensure that the cursor doesn't stay in a line that doesn't exist
+    // anymore
+    fn adjust_y(&mut self) -> Result<()> {
+        let lines_count = self.current_buffer().lines_count().context("Adjust y")?;
+
+        let buffer = self.current_buffer_mut();
+        if buffer.offset.y > lines_count {
+            buffer.offset.y = lines_count.saturating_sub(1);
+            buffer.screen_cursor_position.y = 0;
+            return Ok(());
+        } else if buffer.y() >= lines_count {
+            buffer.screen_cursor_position.y =
+                (lines_count.saturating_sub(1 + buffer.offset.y as usize)).try_into()?;
         }
         Ok(())
     }
