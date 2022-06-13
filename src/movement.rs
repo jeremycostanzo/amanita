@@ -1,6 +1,7 @@
 use crate::editor::Editor;
 use crate::modes::Mode;
-use anyhow::Result;
+use anyhow::Context;
+use anyhow::{bail, Result};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {
@@ -105,9 +106,9 @@ impl Movement {
 
     pub fn visual_move(self, editor: &mut Editor) -> Result<()> {
         if editor.mode != Mode::Visual {
-            unreachable!()
+            bail!("Editor mode is {} but visual move was called", editor.mode);
         }
-        self.do_move(editor)?;
+        self.do_move(editor).with_context(|| "Visual move")?;
         let new_raw_cursor_position = editor.current_buffer().raw_position();
         let mut last_selection = &mut editor.last_selection;
         last_selection.end = new_raw_cursor_position;
@@ -116,7 +117,7 @@ impl Movement {
 
     pub fn delete(self, editor: &mut Editor) -> Result<()> {
         let position = editor.current_buffer().raw_position();
-        self.do_move(editor)?;
+        self.do_move(editor).context("Delete")?;
         let position_after_move = editor.current_buffer().raw_position();
 
         let from = position.min(position_after_move);
@@ -141,7 +142,7 @@ impl Editor {
     fn adjust_x(&mut self) -> Result<()> {
         let width = self.screen().width;
         let buffer = self.current_buffer_mut();
-        let new_line_size = buffer.current_line()?.len();
+        let new_line_size = buffer.current_line().context("Current line length")?.len();
         if buffer.offset.x > new_line_size {
             buffer.offset.x = new_line_size.saturating_sub(width as usize);
         }
@@ -156,7 +157,7 @@ impl Editor {
         let buffer = self.current_buffer();
         let pos = buffer.raw_position();
 
-        Movement::Line(1).do_move(self)?;
+        Movement::Line(1).do_move(self).context("Insert new line")?;
 
         let buffer = self.current_buffer_mut();
         let content = buffer.content.inner_mut();

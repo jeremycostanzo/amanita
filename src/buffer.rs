@@ -1,4 +1,5 @@
 use crate::OutOfBounds;
+use anyhow::Context;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -89,7 +90,11 @@ impl Buffer {
             .inner()
             .lines()
             .nth(self.y())
-            .ok_or_else(|| OutOfBounds(self.y()).into())
+            .ok_or_else(|| OutOfBounds(self.y()))
+            .context("Current line")
+    }
+    pub fn current_line_length(&self) -> Result<usize> {
+        Ok(self.current_line().context("Current line length")?.len())
     }
     /// I consider three "groups":
     /// [alphanumeric characters](char::is_alphanumeric)
@@ -175,7 +180,11 @@ impl Buffer {
     }
 
     pub async fn save(&self) -> anyhow::Result<()> {
-        let file_name = self.file_name.as_ref().ok_or(NoFileName)?;
+        let file_name = self
+            .file_name
+            .as_ref()
+            .ok_or(NoFileName)
+            .context("Tried to save with no file name")?;
         let buffer_string: String = self.content.inner().replace("\t\t\t\t", "\t");
 
         let mut file = tokio::fs::OpenOptions::new()
@@ -229,6 +238,6 @@ mod tests {
     #[tokio::test]
     async fn read_file() {
         let buffer = Buffer::from_file(Path::new("src/buffer.rs")).await;
-        dbg!(buffer);
+        dbg!(buffer.unwrap());
     }
 }

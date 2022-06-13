@@ -2,8 +2,7 @@ use crate::buffer::Buffer;
 use crate::modes::Mode;
 use crate::movement::Movement;
 use crate::ui::Screen;
-use anyhow::Result;
-
+use anyhow::{bail, Result};
 #[derive(Debug, Default, Clone)]
 pub struct Editor {
     pub buffers: Vec<Buffer>,
@@ -52,7 +51,7 @@ impl Editor {
     }
     pub fn delete_selection(&mut self) -> Result<()> {
         if self.mode != Mode::Visual {
-            unreachable!()
+            bail!("Attempted to delete selection in {} mode", self.mode);
         }
         let start = self.last_selection.start;
         let end = self.last_selection.end;
