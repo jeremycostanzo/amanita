@@ -34,6 +34,10 @@ fn setup_panic_hook() {
 #[tokio::main]
 async fn main() -> Result<()> {
     setup_panic_hook();
+    let file_appender = tracing_appender::rolling::hourly("./logs", "prefix.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    tracing_subscriber::fmt().with_writer(non_blocking).init();
+
     let args: Vec<String> = env::args().collect();
     let file_name = &args[1];
 
