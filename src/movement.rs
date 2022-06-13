@@ -127,13 +127,17 @@ impl Movement {
             position_after_move + 1
         };
 
+        let len = editor.current_buffer().content.inner().len();
+        let boxed_to = to.min(len - 1);
         editor
             .current_buffer_mut()
             .content
             .inner_mut()
-            .replace_range(from..to, "");
+            .replace_range(from..boxed_to, "");
 
-        Movement::ToRaw(from).do_move(editor).map_err(Into::into)
+        editor.adjust_x()?;
+        Movement::ToRaw(from).do_move(editor)?;
+        Ok(())
     }
 }
 
