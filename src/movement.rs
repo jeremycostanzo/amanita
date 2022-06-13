@@ -25,13 +25,13 @@ impl Movement {
                     .current_buffer()
                     .current_line()
                     .with_context(|| format!("Move cursor of {}", delta))?
-                    .len() as i64;
+                    .len();
 
                 let width = editor.screen().width;
 
                 let buffer = editor.current_buffer_mut();
                 let position = buffer.x() as i64;
-                let target = (position + delta).max(0).min(line_len);
+                let target = (position + delta).max(0).min(line_len as i64);
 
                 let boxed_delta = target - position;
 
@@ -51,23 +51,36 @@ impl Movement {
             Movement::CursorUnbounded(delta) => {
                 let buffer = editor.current_buffer();
                 let content = buffer.content.inner();
-                let current_position = editor.current_buffer().raw_position() as i64;
-                let target = current_position + delta;
-                let min = target.min(current_position).max(0) as usize;
+
+                let current_position = editor.current_buffer().raw_position();
+
+                let target = (current_position as i64 + delta).max(0) as usize;
+
+                let min = target.min(current_position);
                 let max = (target.max(current_position) as usize).min(content.len());
-                let bounded_content = &buffer.content.inner()[min..(max + 1)];
-                let lines_count = bounded_content.matches('\n').count();
+
+                let max_is_new_line = content[max..].starts_with('\n');
+
+                let bounded_content = &content[min..(max + 1)];
+
+                let new_lines = bounded_content.matches('\n').count();
+
+                let absolute_lines_delta = if max_is_new_line {
+                    new_lines.saturating_sub(1)
+                } else {
+                    new_lines
+                };
 
                 let lines_delta = if current_position > target {
-                    -(lines_count as i64)
+                    -(absolute_lines_delta as i64)
                 } else {
-                    lines_count as i64
+                    absolute_lines_delta as i64
                 };
 
                 Movement::Line(lines_delta).do_move(editor)?;
 
                 let current_position = editor.current_buffer().raw_position() as i64;
-                let cursor_delta = target - current_position;
+                let cursor_delta = target as i64 - current_position;
 
                 Movement::Cursor(cursor_delta).do_move(editor)?;
                 Ok(())
@@ -156,9 +169,9 @@ impl Editor {
         if buffer.offset.x > new_line_size {
             buffer.offset.x = new_line_size.saturating_sub(width as usize);
         }
-        if buffer.x() > new_line_size {
+        if buffer.x() >= new_line_size {
             buffer.screen_cursor_position.x =
-                (new_line_size - buffer.offset.x as usize).try_into()?;
+                (new_line_size.saturating_sub(1 + buffer.offset.x as usize)).try_into()?;
         }
         Ok(())
     }
