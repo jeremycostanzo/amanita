@@ -28,10 +28,16 @@ impl Movement {
                     .len();
 
                 let width = editor.screen().width;
+                let current_mode = editor.mode.clone();
 
                 let buffer = editor.current_buffer_mut();
                 let position = buffer.x() as i64;
-                let target = (position + delta).max(0).min(line_len as i64);
+                let upper_bound = if current_mode == Mode::Insert {
+                    line_len
+                } else {
+                    line_len.saturating_sub(1)
+                } as i64;
+                let target = (position + delta).max(0).min(upper_bound);
 
                 let boxed_delta = target - position;
 
@@ -164,14 +170,20 @@ impl Editor {
     // Used after a move of cursor, to ensure that the cursor never goes out of a line
     fn adjust_x(&mut self) -> Result<()> {
         let width = self.screen().width;
+        let current_mode = self.mode.clone();
         let buffer = self.current_buffer_mut();
         let new_line_size = buffer.current_line().context("Adjust x")?.len();
-        if buffer.offset.x > new_line_size {
+        let upper_bound = if current_mode == Mode::Insert {
+            new_line_size
+        } else {
+            new_line_size.saturating_sub(1)
+        };
+        if buffer.offset.x > upper_bound {
             buffer.offset.x = new_line_size.saturating_sub(width as usize);
         }
         if buffer.x() >= new_line_size {
             buffer.screen_cursor_position.x =
-                (new_line_size.saturating_sub(1 + buffer.offset.x as usize)).try_into()?;
+                (upper_bound.saturating_sub(1 + buffer.offset.x as usize)).try_into()?;
         }
         Ok(())
     }

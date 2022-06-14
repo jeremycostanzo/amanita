@@ -98,6 +98,7 @@ pub async fn handle_event(
             code: KeyCode::Esc,
             modifiers: KeyModifiers::NONE,
         }) => {
+            editor.leave_insert_mode()?;
             editor.mode = Mode::Normal;
         }
 

@@ -2,6 +2,7 @@ use crate::buffer::Buffer;
 use crate::modes::Mode;
 use crate::movement::Movement;
 use crate::ui::Screen;
+use anyhow::Context;
 use anyhow::{bail, Result};
 #[derive(Debug, Default, Clone)]
 pub struct Editor {
@@ -11,6 +12,37 @@ pub struct Editor {
     pub current_buffer_index: usize,
     pub mode: Mode,
     pub last_selection: Selection,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct EditorBuilder {
+    pub buffers: Option<Vec<Buffer>>,
+}
+
+#[derive(Debug)]
+struct EmptyBuffers;
+impl std::fmt::Display for EmptyBuffers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cannot build an editor without buffers")
+    }
+}
+
+impl std::error::Error for EmptyBuffers {}
+
+impl EditorBuilder {
+    pub fn new() -> Self {
+        Default::default()
+    }
+    pub fn buffers(&mut self, buffers: Vec<Buffer>) -> &mut Self {
+        self.buffers = Some(buffers);
+        self
+    }
+    pub fn build(&mut self) -> Result<Editor> {
+        Ok(Editor {
+            buffers: self.buffers.take().ok_or(EmptyBuffers)?,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -62,35 +94,21 @@ impl Editor {
         self.mode = Mode::Normal;
         Ok(())
     }
-}
 
-#[derive(Debug, Default, Clone)]
-pub struct EditorBuilder {
-    pub buffers: Option<Vec<Buffer>>,
-}
+    pub fn leave_insert_mode(&mut self) -> Result<()> {
+        if self.mode != Mode::Insert {
+            bail!("Attempted to leave insert mode while mode is not insert")
+        };
 
-#[derive(Debug)]
-struct EmptyBuffers;
-impl std::fmt::Display for EmptyBuffers {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cannot build an editor without buffers")
-    }
-}
+        let current_buffer = self.current_buffer();
 
-impl std::error::Error for EmptyBuffers {}
-
-impl EditorBuilder {
-    pub fn new() -> Self {
-        Default::default()
-    }
-    pub fn buffers(&mut self, buffers: Vec<Buffer>) -> &mut Self {
-        self.buffers = Some(buffers);
-        self
-    }
-    pub fn build(&mut self) -> Result<Editor> {
-        Ok(Editor {
-            buffers: self.buffers.take().ok_or(EmptyBuffers)?,
-            ..Default::default()
-        })
+        if current_buffer.x()
+            == current_buffer
+                .current_line_length()
+                .context("Enter insert mode")?
+        {
+            Movement::Cursor(-1).do_move(self)?
+        }
+        Ok(())
     }
 }
