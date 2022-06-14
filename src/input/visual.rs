@@ -94,6 +94,19 @@ pub async fn handle_event(
         }
 
         Event::Key(KeyEvent {
+            code: KeyCode::Char('L'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            Movement::EndOfLine.visual_move(editor)?;
+        }
+
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('H'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            Movement::BeginningOfLine.visual_move(editor)?;
+        }
+        Event::Key(KeyEvent {
             code: KeyCode::Char('c'),
             modifiers: KeyModifiers::CONTROL,
         }) => {
