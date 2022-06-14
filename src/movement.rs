@@ -18,6 +18,7 @@ pub enum Movement {
 
     EndOfLine,
     BeginningOfLine,
+    Char { char: char, delta: i64 },
 }
 
 impl Movement {
@@ -147,6 +148,29 @@ impl Movement {
                 let current_buffer = editor.current_buffer();
                 let x = current_buffer.x();
                 Movement::Cursor(-(x as i64)).do_move(editor)
+            }
+            Movement::Char { char, delta } => {
+                let current_buffer = editor.current_buffer();
+                let content = current_buffer.content.inner();
+                let current_position = current_buffer.raw_position();
+                let target = if delta >= 0 {
+                    let slice_start = (current_position + 1).min(content.len());
+                    let matches = &mut content[slice_start..content.len()].match_indices(char);
+                    matches
+                        .nth(delta as usize)
+                        .map(|(indice, _)| indice + slice_start)
+                } else {
+                    let matches = &mut content[0..current_position].match_indices(char).rev();
+                    matches
+                        .nth((-(delta as i64)) as usize)
+                        .map(|(indice, _)| indice)
+                };
+
+                if let Some(target) = target {
+                    Movement::ToRaw(target).do_move(editor)?;
+                }
+
+                Ok(())
             }
         }
     }
