@@ -1,7 +1,7 @@
 use crate::editor::Editor;
 use crate::modes::Mode;
 use anyhow::Context;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {
@@ -15,6 +15,9 @@ pub enum Movement {
     CursorUnbounded(i64),
     // Go to
     ToRaw(usize),
+
+    EndOfLine,
+    BeginningOfLine,
 }
 
 impl Movement {
@@ -124,6 +127,26 @@ impl Movement {
                 let cursor_delta = target as i64 - buffer.raw_position() as i64;
                 Movement::CursorUnbounded(cursor_delta).do_move(editor)?;
                 Ok(())
+            }
+            Movement::EndOfLine => {
+                let current_mode = editor.mode.clone();
+                let current_buffer = editor.current_buffer();
+                let line_length = current_buffer.current_line_length()?;
+                let target = if current_mode == Mode::Insert {
+                    line_length
+                } else {
+                    line_length.saturating_sub(1)
+                };
+                let x = current_buffer.x();
+                let delta = target.checked_sub(current_buffer.x()).ok_or_else(|| {
+                    anyhow!("attempted to substract {} from {}", x, target).context("End of line")
+                })?;
+                Movement::Cursor(delta as i64).do_move(editor)
+            }
+            Movement::BeginningOfLine => {
+                let current_buffer = editor.current_buffer();
+                let x = current_buffer.x();
+                Movement::Cursor(-(x as i64)).do_move(editor)
             }
         }
     }

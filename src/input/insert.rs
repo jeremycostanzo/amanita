@@ -18,6 +18,14 @@ pub async fn handle_event(
             editor.save().await?;
         }
         Event::Key(KeyEvent {
+            code: KeyCode::Char('a'),
+            modifiers: KeyModifiers::CONTROL,
+        }) => Movement::BeginningOfLine.do_move(editor)?,
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('e'),
+            modifiers: KeyModifiers::CONTROL,
+        }) => Movement::EndOfLine.do_move(editor)?,
+        Event::Key(KeyEvent {
             code: KeyCode::Char(c),
             modifiers: KeyModifiers::NONE,
         }) => {
