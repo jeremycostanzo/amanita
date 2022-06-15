@@ -163,7 +163,7 @@ impl Movement {
                 } else {
                     let matches = &mut content[0..current_position].match_indices(char).rev();
                     matches
-                        .nth((-(delta as i64)) as usize)
+                        .nth((-(delta as i64) - 1) as usize)
                         .map(|(indice, _)| indice)
                 };
 

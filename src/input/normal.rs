@@ -148,7 +148,7 @@ pub async fn handle_event(
         }) => {
             Movement::Char {
                 char: 'c',
-                delta: 1,
+                delta: 0,
             }
             .do_move(editor)?;
         }
