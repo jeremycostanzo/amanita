@@ -18,6 +18,41 @@ pub async fn handle_event(
             editor.mode = Mode::Insert;
         }
         Event::Key(KeyEvent {
+            code: KeyCode::Char('o'),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            editor.insert_newline_in_n_lines(0)?;
+            editor.mode = Mode::Insert;
+        }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('O'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            editor.insert_newline_in_n_lines(-1)?;
+            editor.mode = Mode::Insert;
+        }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('a'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            editor.mode = Mode::Insert;
+            Movement::Cursor(1).do_move(editor)?;
+        }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('A'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            editor.mode = Mode::Insert;
+            Movement::EndOfLine.do_move(editor)?;
+        }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('I'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            editor.mode = Mode::Insert;
+            Movement::FirstNonWhitespaceOfLine.do_move(editor)?;
+        }
+        Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::CONTROL,
         }) => {

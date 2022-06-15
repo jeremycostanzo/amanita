@@ -280,6 +280,31 @@ impl Editor {
         Ok(())
     }
 
+    pub fn insert_newline_in_n_lines(&mut self, n: i64) -> Result<()> {
+        let buffer = &mut self.current_buffer_mut();
+        let pos = buffer.raw_position();
+        let content = buffer.content.inner_mut();
+        let indice = if n >= 0 {
+            content[pos..]
+                .match_indices('\n')
+                .nth(n as usize)
+                .map(|(indice, _)| indice)
+                .unwrap_or(content.len())
+                + pos
+        } else {
+            content[..pos]
+                .match_indices('\n')
+                .rev()
+                .nth((-n - 1) as usize)
+                .map(|(indice, _)| indice)
+                .unwrap_or(0)
+        };
+        Movement::ToRaw(indice + 1).do_move(self)?;
+        self.insert_newline()?;
+        Movement::Line(-1).do_move(self)?;
+        Ok(())
+    }
+
     pub fn insert_char(&mut self, c: char) -> Result<()> {
         let buffer = self.current_buffer_mut();
         let pos = buffer.raw_position();
