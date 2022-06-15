@@ -18,6 +18,7 @@ pub enum Movement {
 
     EndOfLine,
     BeginningOfLine,
+    FirstNonWhitespaceOfLine,
     Char { char: char, delta: i64 },
 }
 
@@ -171,6 +172,19 @@ impl Movement {
                 }
 
                 Ok(())
+            }
+            Movement::FirstNonWhitespaceOfLine => {
+                let current_buffer = editor.current_buffer();
+                let x = current_buffer.x();
+                let line = current_buffer.current_line()?;
+                let index = line
+                    .chars()
+                    .enumerate()
+                    .find(|(_, char)| !char.is_whitespace())
+                    .map(|(i, _)| i);
+
+                let x_to = index.unwrap_or(0) as i64;
+                Movement::Cursor(x_to - (x as i64)).do_move(editor)
             }
         }
     }

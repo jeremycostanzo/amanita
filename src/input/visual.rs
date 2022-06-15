@@ -104,7 +104,7 @@ pub async fn handle_event(
             code: KeyCode::Char('H'),
             modifiers: KeyModifiers::SHIFT,
         }) => {
-            Movement::BeginningOfLine.visual_move(editor)?;
+            Movement::FirstNonWhitespaceOfLine.visual_move(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('c'),
