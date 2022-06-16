@@ -5,6 +5,7 @@ pub enum Mode {
     Normal,
     Insert,
     Visual,
+    NormalDelete,
 }
 
 impl Display for Mode {
@@ -15,6 +16,7 @@ impl Display for Mode {
             "{}",
             match self {
                 Normal => "Normal",
+                NormalDelete => "NormalDelete",
                 Insert => "Insert",
                 Visual => "Visual",
             }

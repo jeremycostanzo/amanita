@@ -1,5 +1,6 @@
 mod insert;
 mod normal;
+mod normal_delete;
 mod visual;
 
 use crate::editor::Editor;
@@ -25,6 +26,7 @@ pub async fn handle_input(editor: &mut Editor) -> Result<()> {
                 let leave_program = match mode {
                     Mode::Insert => insert::handle_event(event, editor).await,
                     Mode::Normal => normal::handle_event(event, editor).await,
+                    Mode::NormalDelete => normal_delete::handle_event(event, editor).await,
                     Mode::Visual => visual::handle_event(event, editor).await,
                 }?;
 
