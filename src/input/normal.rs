@@ -65,6 +65,18 @@ pub async fn handle_event(
             Movement::Word(1).do_move(editor)?;
         }
         Event::Key(KeyEvent {
+            code: KeyCode::Char('e'),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            Movement::WordEnd(1).do_move(editor)?;
+        }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('E'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            Movement::WordEnd(-1).do_move(editor)?;
+        }
+        Event::Key(KeyEvent {
             code: KeyCode::Right,
             ..
         }) => {

@@ -185,6 +185,82 @@ impl Buffer {
         }
     }
 
+    fn previous_word_end_index(&self, position: usize) -> usize {
+        let inner = self.content.inner();
+        let mut chars = inner[0..=position].chars().rev().enumerate();
+        let initial_char_type: Option<CharacterType> = chars.next().map(|(_, c)| c.into());
+        if initial_char_type.is_none() {
+            return 0;
+        }
+        let mut char_index = 0;
+        let mut char_type_on_cursor: Option<CharacterType> = chars.next().map(|(i, c)| {
+            char_index = i;
+            c.into()
+        });
+        while char_type_on_cursor == initial_char_type {
+            char_type_on_cursor = chars.next().map(|(i, c)| {
+                char_index = i;
+                c.into()
+            });
+        }
+
+        match char_type_on_cursor {
+            None => 0,
+            Some(char_type) => {
+                if char_type != CharacterType::Other {
+                    position.saturating_sub(char_index)
+                } else {
+                    chars
+                        .find(|(_, c)| {
+                            let current_char_type: CharacterType = (*c).into();
+                            current_char_type != CharacterType::Other
+                        })
+                        .map(|(i, _)| position.saturating_sub(i))
+                        .unwrap_or(0)
+                }
+            }
+        }
+    }
+
+    fn next_word_end_index(&self, position: usize) -> usize {
+        let inner = self.content.inner();
+        let mut chars = inner.chars().enumerate().skip(position + 1);
+        let mut char_type_on_cursor: Option<CharacterType> = chars.next().map(|(_, c)| c.into());
+        while char_type_on_cursor == Some(CharacterType::Other) {
+            char_type_on_cursor = chars.next().map(|(_, c)| c.into());
+        }
+
+        match char_type_on_cursor {
+            None => inner.len() - 1,
+            Some(char_type) => chars
+                .find(|(_, c)| {
+                    let current_char_type: CharacterType = (*c).into();
+                    current_char_type != char_type
+                })
+                .map(|(i, _)| i.saturating_sub(1))
+                .unwrap_or(inner.len() - 1),
+        }
+    }
+
+    pub fn nth_word_end_index(&self, delta: i64) -> usize {
+        let mut position = self.raw_position();
+        match delta.cmp(&0) {
+            std::cmp::Ordering::Less => {
+                for _ in 0..(-delta) {
+                    position = self.previous_word_end_index(position);
+                }
+                position
+            }
+            std::cmp::Ordering::Equal => position,
+            std::cmp::Ordering::Greater => {
+                for _ in 0..delta {
+                    position = self.next_word_end_index(position);
+                }
+                position
+            }
+        }
+    }
+
     pub fn next_char_index(&self, char: char, delta: i64) -> Option<usize> {
         let content = self.content.inner();
         let current_position = self.raw_position();

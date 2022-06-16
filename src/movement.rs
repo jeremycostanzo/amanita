@@ -11,6 +11,8 @@ pub enum Movement {
     Line(i64),
     // Move n words
     Word(i64),
+    // Move to n word end
+    WordEnd(i64),
     // Move the cursor by n characters in the buffer
     CursorUnbounded(i64),
     // Go to
@@ -124,6 +126,14 @@ impl Movement {
                     (buffer.screen_cursor_position.y as i64 + cursor_position_delta) as u16;
                 buffer.offset.y = ((buffer.offset.y as i64) + offset_delta) as usize;
                 editor.adjust_x().map_err(Into::into)
+            }
+
+            Movement::WordEnd(delta) => {
+                let buffer = editor.current_buffer();
+                let target = buffer.nth_word_end_index(delta);
+                let cursor_delta = target as i64 - buffer.raw_position() as i64;
+                Movement::CursorUnbounded(cursor_delta).do_move(editor)?;
+                Ok(())
             }
 
             Movement::Word(delta) => {

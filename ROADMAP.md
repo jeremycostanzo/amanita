@@ -4,7 +4,7 @@
 - [x] t T
 - [x] o
 - [x] O
-- [ ] e
+- [x] e
 - [x] g
 - [x] G
 - [ ] movement + delete
