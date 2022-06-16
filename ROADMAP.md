@@ -5,8 +5,8 @@
 - [x] o
 - [x] O
 - [ ] e
-- [ ] g
-- [ ] G
+- [x] g
+- [x] G
 - [ ] movement + delete
 - [ ] yank
 - [ ] paste

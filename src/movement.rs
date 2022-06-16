@@ -21,6 +21,8 @@ pub enum Movement {
     FirstNonWhitespaceOfLine,
     Char { char: char, delta: i64 },
     BeforeChar { char: char, delta: i64 },
+    BeginningOfFile,
+    EndOfFile,
 }
 
 impl Movement {
@@ -187,6 +189,11 @@ impl Movement {
 
                 let x_to = index.unwrap_or(0) as i64;
                 Movement::Cursor(x_to - (x as i64)).do_move(editor)
+            }
+            Movement::BeginningOfFile => Movement::ToRaw(0).do_move(editor),
+            Movement::EndOfFile => {
+                let len = editor.current_buffer().content.inner().len();
+                Movement::ToRaw(len.saturating_sub(1)).do_move(editor)
             }
         }
     }

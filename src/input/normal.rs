@@ -185,6 +185,15 @@ pub async fn handle_event(
             }
             .do_move(editor)?;
         }
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('g'),
+            modifiers: KeyModifiers::NONE,
+        }) => Movement::BeginningOfFile.do_move(editor)?,
+
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('G'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => Movement::EndOfFile.do_move(editor)?,
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('v'),
