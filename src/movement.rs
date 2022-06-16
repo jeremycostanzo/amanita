@@ -152,20 +152,7 @@ impl Movement {
             }
             Movement::Char { char, delta } => {
                 let current_buffer = editor.current_buffer();
-                let content = current_buffer.content.inner();
-                let current_position = current_buffer.raw_position();
-                let target = if delta >= 0 {
-                    let slice_start = (current_position + 1).min(content.len());
-                    let matches = &mut content[slice_start..content.len()].match_indices(char);
-                    matches
-                        .nth(delta as usize)
-                        .map(|(indice, _)| indice + slice_start)
-                } else {
-                    let matches = &mut content[0..current_position].match_indices(char).rev();
-                    matches
-                        .nth((-(delta as i64) - 1) as usize)
-                        .map(|(indice, _)| indice)
-                };
+                let target = current_buffer.next_char_index(char, delta);
 
                 if let Some(target) = target {
                     Movement::ToRaw(target).do_move(editor)?;

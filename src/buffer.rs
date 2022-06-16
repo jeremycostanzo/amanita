@@ -185,6 +185,25 @@ impl Buffer {
         }
     }
 
+    pub fn next_char_index(&self, char: char, delta: i64) -> Option<usize> {
+        let content = self.content.inner();
+        let current_position = self.raw_position();
+        let target = if delta >= 0 {
+            let slice_start = (current_position + 1).min(content.len());
+            let matches = &mut content[slice_start..content.len()].match_indices(char);
+            matches
+                .nth(delta as usize)
+                .map(|(indice, _)| indice + slice_start)
+        } else {
+            let matches = &mut content[0..current_position].match_indices(char).rev();
+            matches
+                .nth((-(delta as i64) - 1) as usize)
+                .map(|(indice, _)| indice)
+        };
+
+        target
+    }
+
     pub async fn save(&self) -> anyhow::Result<()> {
         let file_name = self
             .file_name
