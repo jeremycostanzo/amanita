@@ -165,6 +165,28 @@ pub async fn handle_event(
         }
 
         Event::Key(KeyEvent {
+            code: KeyCode::Char('t'),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            Movement::BeforeChar {
+                char: 'c',
+                delta: 0,
+            }
+            .do_move(editor)?;
+        }
+
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('T'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            Movement::BeforeChar {
+                char: 'c',
+                delta: -1,
+            }
+            .do_move(editor)?;
+        }
+
+        Event::Key(KeyEvent {
             code: KeyCode::Char('v'),
             modifiers: KeyModifiers::NONE,
         }) => {

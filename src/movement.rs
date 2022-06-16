@@ -20,6 +20,7 @@ pub enum Movement {
     BeginningOfLine,
     FirstNonWhitespaceOfLine,
     Char { char: char, delta: i64 },
+    BeforeChar { char: char, delta: i64 },
 }
 
 impl Movement {
@@ -156,6 +157,20 @@ impl Movement {
 
                 if let Some(target) = target {
                     Movement::ToRaw(target).do_move(editor)?;
+                }
+
+                Ok(())
+            }
+            Movement::BeforeChar { char, delta } => {
+                let current_buffer = editor.current_buffer();
+                let target = current_buffer.next_char_index(char, delta);
+
+                if let Some(target) = target {
+                    if delta >= 0 {
+                        Movement::ToRaw(target.saturating_sub(1)).do_move(editor)?;
+                    } else {
+                        Movement::ToRaw(target + 1).do_move(editor)?;
+                    }
                 }
 
                 Ok(())

@@ -1,7 +1,7 @@
 # Current week (Week 3)
 - [x] $ ^
 - [x] f F
-- [ ] t T
+- [x] t T
 - [x] o
 - [x] O
 - [ ] e
