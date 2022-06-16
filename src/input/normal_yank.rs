@@ -1,4 +1,4 @@
-use crate::editor::{Editor, Selection};
+use crate::editor::Editor;
 use crate::modes::Mode;
 use crate::movement::Movement;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -12,146 +12,105 @@ pub async fn handle_event(
 ) -> anyhow::Result<Option<LeaveProgram>> {
     match event {
         Event::Key(KeyEvent {
-            code: KeyCode::Char('i'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            editor.mode = Mode::Insert;
-        }
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('o'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            editor.insert_newline_in_n_lines(0)?;
-            editor.mode = Mode::Insert;
-        }
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('O'),
-            modifiers: KeyModifiers::SHIFT,
-        }) => {
-            editor.insert_newline_in_n_lines(-1)?;
-            editor.mode = Mode::Insert;
-        }
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('a'),
-            modifiers: KeyModifiers::SHIFT,
-        }) => {
-            editor.mode = Mode::Insert;
-            Movement::Cursor(1).do_move(editor)?;
-        }
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('A'),
-            modifiers: KeyModifiers::SHIFT,
-        }) => {
-            editor.mode = Mode::Insert;
-            Movement::EndOfLine.do_move(editor)?;
-        }
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('I'),
-            modifiers: KeyModifiers::SHIFT,
-        }) => {
-            editor.mode = Mode::Insert;
-            Movement::FirstNonWhitespaceOfLine.do_move(editor)?;
-        }
-        Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::CONTROL,
         }) => {
-            Movement::Word(1).do_move(editor)?;
+            Movement::Word(1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('w'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Word(1).do_move(editor)?;
+            Movement::Word(1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('e'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::WordEnd(1).do_move(editor)?;
+            Movement::WordEnd(1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('E'),
             modifiers: KeyModifiers::SHIFT,
         }) => {
-            Movement::WordEnd(-1).do_move(editor)?;
+            Movement::WordEnd(-1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Right,
             ..
         }) => {
-            Movement::Cursor(1).do_move(editor)?;
+            Movement::Cursor(1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('l'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Cursor(1).do_move(editor)?;
+            Movement::Cursor(1).yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Up, ..
         }) => {
-            Movement::Line(-1).do_move(editor)?;
+            Movement::Line(-1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('k'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Line(-1).do_move(editor)?;
+            Movement::Line(-1).yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Left,
             modifiers: KeyModifiers::CONTROL,
         }) => {
-            Movement::Word(-1).do_move(editor)?;
+            Movement::Word(-1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('b'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Word(-1).do_move(editor)?;
+            Movement::Word(-1).yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Left,
             ..
         }) => {
-            Movement::Cursor(-1).do_move(editor)?;
+            Movement::Cursor(-1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('h'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Cursor(-1).do_move(editor)?;
+            Movement::Cursor(-1).yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Down,
             ..
         }) => {
-            Movement::Line(1).do_move(editor)?;
+            Movement::Line(1).yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('j'),
             modifiers: KeyModifiers::NONE,
         }) => {
-            Movement::Line(1).do_move(editor)?;
+            Movement::Line(1).yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('L'),
             modifiers: KeyModifiers::SHIFT,
         }) => {
-            Movement::EndOfLine.do_move(editor)?;
+            Movement::EndOfLine.yank(editor)?;
         }
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('H'),
             modifiers: KeyModifiers::SHIFT,
         }) => {
-            Movement::FirstNonWhitespaceOfLine.do_move(editor)?;
+            Movement::FirstNonWhitespaceOfLine.yank(editor)?;
         }
 
         Event::Key(KeyEvent {
@@ -162,7 +121,7 @@ pub async fn handle_event(
                 char: 'c',
                 delta: 0,
             }
-            .do_move(editor)?;
+            .yank(editor)?;
         }
 
         Event::Key(KeyEvent {
@@ -173,7 +132,7 @@ pub async fn handle_event(
                 char: 'c',
                 delta: -1,
             }
-            .do_move(editor)?;
+            .yank(editor)?;
         }
 
         Event::Key(KeyEvent {
@@ -184,7 +143,7 @@ pub async fn handle_event(
                 char: 'c',
                 delta: 0,
             }
-            .do_move(editor)?;
+            .yank(editor)?;
         }
 
         Event::Key(KeyEvent {
@@ -195,45 +154,17 @@ pub async fn handle_event(
                 char: 'c',
                 delta: -1,
             }
-            .do_move(editor)?;
+            .yank(editor)?;
         }
         Event::Key(KeyEvent {
             code: KeyCode::Char('g'),
             modifiers: KeyModifiers::NONE,
-        }) => Movement::BeginningOfFile.do_move(editor)?,
+        }) => Movement::BeginningOfFile.yank(editor)?,
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('G'),
             modifiers: KeyModifiers::SHIFT,
-        }) => Movement::EndOfFile.do_move(editor)?,
-
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('v'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            let raw_position = editor.current_buffer().raw_position();
-            editor.last_selection = Selection::at_cursor(raw_position);
-            editor.mode = Mode::Visual;
-        }
-
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('d'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            editor.mode = Mode::NormalDelete;
-        }
-
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('y'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            editor.mode = Mode::NormalYank;
-        }
-
-        Event::Key(KeyEvent {
-            code: KeyCode::Char('p'),
-            modifiers: KeyModifiers::NONE,
-        }) => editor.paste(),
+        }) => Movement::EndOfFile.yank(editor)?,
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('c'),
@@ -243,5 +174,7 @@ pub async fn handle_event(
         }
         _ => {}
     };
+    editor.mode = Mode::Normal;
+
     Ok(None)
 }

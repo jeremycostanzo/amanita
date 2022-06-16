@@ -8,10 +8,27 @@ use anyhow::{bail, Result};
 pub struct Editor {
     pub buffers: Vec<Buffer>,
     pub screen: Screen,
-    pub clipboard: String,
     pub current_buffer_index: usize,
     pub mode: Mode,
     pub last_selection: Selection,
+    pub clipboard: Clipboard,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Clipboard {
+    pub content: String,
+}
+
+impl AsRef<str> for Clipboard {
+    fn as_ref(&self) -> &str {
+        self.content.as_str()
+    }
+}
+
+impl ToString for Clipboard {
+    fn to_string(&self) -> String {
+        self.content.clone()
+    }
 }
 
 #[derive(Debug, Default, Clone)]

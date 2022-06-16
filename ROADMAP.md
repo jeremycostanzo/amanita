@@ -8,8 +8,8 @@
 - [x] g
 - [x] G
 - [x] movement + delete
-- [ ] yank
-- [ ] paste
+- [x] yank
+- [x] paste
 - [ ] undo tree
 
 # Week 4

@@ -1,4 +1,4 @@
-use crate::editor::Editor;
+use crate::editor::{Clipboard, Editor};
 use crate::modes::Mode;
 use anyhow::Context;
 use anyhow::{anyhow, bail, Result};
@@ -233,16 +233,39 @@ impl Movement {
 
         let len = editor.current_buffer().content.inner().len();
         let boxed_to = to.min(len - 1);
+        editor.clipboard = Clipboard {
+            content: editor.current_buffer().content.inner()[from..boxed_to]
+                .chars()
+                .collect(),
+        };
         editor
             .current_buffer_mut()
             .content
             .inner_mut()
             .replace_range(from..boxed_to, "");
 
+        // In case last line is deleted to prevent the cursor from going out of bounds
         editor.adjust_y()?;
         editor.adjust_x()?;
         Movement::ToRaw(from).do_move(editor)?;
         Ok(())
+    }
+
+    pub fn yank(&self, editor: &mut Editor) -> Result<()> {
+        let old_position = editor.current_buffer().raw_position();
+        self.do_move(editor).context("First move in yank")?;
+        let new_position = editor.current_buffer().raw_position();
+        let min = old_position.min(new_position);
+        let max = old_position.max(new_position);
+        editor.clipboard = Clipboard {
+            content: editor.current_buffer().content.inner()[min..=max]
+                .chars()
+                .collect(),
+        };
+
+        Movement::ToRaw(old_position)
+            .do_move(editor)
+            .context("Move back when yanking")
     }
 }
 
@@ -334,6 +357,15 @@ impl Editor {
         content.insert(pos, c);
 
         Movement::Cursor(1).do_move(self).map_err(Into::into)
+    }
+
+    pub fn paste(&mut self) {
+        let content = self.clipboard.content.to_string();
+        let pos = self.current_buffer().raw_position();
+        self.current_buffer_mut()
+            .content
+            .inner_mut()
+            .insert_str(pos, &content);
     }
 
     pub fn delete_char(&mut self) -> Result<()> {
