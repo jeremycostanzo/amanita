@@ -7,7 +7,7 @@
 - [x] e
 - [x] g
 - [x] G
-- [ ] movement + delete
+- [x] movement + delete
 - [ ] yank
 - [ ] paste
 - [ ] undo tree

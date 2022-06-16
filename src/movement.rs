@@ -289,13 +289,15 @@ impl Editor {
         let buffer = self.current_buffer();
         let pos = buffer.raw_position();
 
+        let content = self.current_buffer_mut().content.inner_mut();
+        content.insert(pos, '\n');
+
         Movement::Line(1).do_move(self).context("Insert new line")?;
 
         let buffer = self.current_buffer_mut();
-        let content = buffer.content.inner_mut();
-        content.insert(pos, '\n');
         buffer.offset.x = 0;
         buffer.screen_cursor_position.x = 0;
+
         Ok(())
     }
 
