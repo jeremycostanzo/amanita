@@ -3,7 +3,7 @@ use crate::modes::Mode;
 use anyhow::Context;
 use anyhow::{bail, Result};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Movement {
     // Most basic movement: move the cursor by n characters in the line
     Cursor(i64),
@@ -28,7 +28,7 @@ pub enum Movement {
 }
 
 impl Movement {
-    pub fn perform(self, editor: &mut Editor) -> Result<()> {
+    pub fn perform(&self, editor: &mut Editor) -> Result<()> {
         match self {
             Movement::Line(delta) => {
                 let heigth = editor.screen().heigth;
@@ -36,7 +36,7 @@ impl Movement {
                 let buffer = editor.current_buffer_mut();
 
                 let y = buffer.y() as i64;
-                let boxed_delta = delta
+                let boxed_delta = (*delta)
                     .max(-y)
                     .min(buffer.content.inner().lines().count() as i64 - y - 1);
                 let cursor_position = buffer.screen_cursor_position.y;
@@ -85,6 +85,7 @@ impl Movement {
                 Ok(())
             }
             Movement::ToRaw(target) => {
+                let target = *target;
                 let current_raw_position = editor.current_buffer().raw_position();
                 let content = editor.current_buffer().content.inner();
 
@@ -125,6 +126,7 @@ impl Movement {
             }
 
             Movement::WordEnd(delta) => {
+                let delta = *delta;
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_end_index(delta);
                 Movement::ToRaw(target).perform(editor)?;
@@ -132,6 +134,7 @@ impl Movement {
             }
 
             Movement::Word(delta) => {
+                let delta = *delta;
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_index(delta);
                 Movement::ToRaw(target).perform(editor)?;
@@ -151,7 +154,7 @@ impl Movement {
             }
             Movement::Char { char, delta } => {
                 let current_buffer = editor.current_buffer();
-                let target = current_buffer.next_char_index(char, delta);
+                let target = current_buffer.next_char_index(*char, *delta);
 
                 if let Some(target) = target {
                     Movement::ToRaw(target).perform(editor)?;
@@ -161,8 +164,9 @@ impl Movement {
             }
 
             Movement::BeforeChar { char, delta } => {
+                let delta = *delta;
                 let current_buffer = editor.current_buffer();
-                let target = current_buffer.next_char_index(char, delta);
+                let target = current_buffer.next_char_index(*char, delta);
 
                 if let Some(target) = target {
                     if delta >= 0 {
