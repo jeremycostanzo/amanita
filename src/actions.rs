@@ -1,7 +1,7 @@
 use crate::editor::{Clipboard, Editor};
 use crate::modes::Mode;
 use anyhow::Context;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Movement {
@@ -116,6 +116,7 @@ impl Movement {
 
                 Movement::Cursor(cursor_delta).perform(editor)
             }
+
             Movement::CursorUnbounded(delta) => {
                 let current_position = editor.current_buffer().raw_position();
                 let target = (current_position as i64 + delta).max(0) as usize;
@@ -126,33 +127,23 @@ impl Movement {
             Movement::WordEnd(delta) => {
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_end_index(delta);
-                let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::CursorUnbounded(cursor_delta).perform(editor)?;
+                Movement::ToRaw(target).perform(editor)?;
                 Ok(())
             }
 
             Movement::Word(delta) => {
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_index(delta);
-                let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::CursorUnbounded(cursor_delta).perform(editor)?;
+                Movement::ToRaw(target).perform(editor)?;
                 Ok(())
             }
+
             Movement::EndOfLine => {
-                let current_mode = editor.mode.clone();
                 let current_buffer = editor.current_buffer();
-                let line_length = current_buffer.current_line_length()?;
-                let target = if current_mode == Mode::Insert {
-                    line_length
-                } else {
-                    line_length.saturating_sub(1)
-                };
-                let x = current_buffer.x();
-                let delta = target.checked_sub(current_buffer.x()).ok_or_else(|| {
-                    anyhow!("attempted to substract {} from {}", x, target).context("End of line")
-                })?;
-                Movement::Cursor(delta as i64).perform(editor)
+                let len = current_buffer.current_line_length()?;
+                Movement::Cursor(len as i64).perform(editor)
             }
+
             Movement::BeginningOfLine => {
                 let current_buffer = editor.current_buffer();
                 let x = current_buffer.x();
@@ -168,6 +159,7 @@ impl Movement {
 
                 Ok(())
             }
+
             Movement::BeforeChar { char, delta } => {
                 let current_buffer = editor.current_buffer();
                 let target = current_buffer.next_char_index(char, delta);
@@ -182,6 +174,7 @@ impl Movement {
 
                 Ok(())
             }
+
             Movement::FirstNonWhitespaceOfLine => {
                 let current_buffer = editor.current_buffer();
                 let x = current_buffer.x();
