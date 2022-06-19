@@ -1,6 +1,6 @@
+use crate::actions::Movement;
 use crate::editor::Editor;
 use crate::modes::Mode;
-use crate::movement::Movement;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::LeaveProgram;

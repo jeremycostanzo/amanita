@@ -1,6 +1,6 @@
+use crate::actions::Movement;
 use crate::buffer::Buffer;
 use crate::modes::Mode;
-use crate::movement::Movement;
 use crate::ui::Screen;
 use anyhow::Context;
 use anyhow::{bail, Result};
