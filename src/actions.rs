@@ -84,26 +84,16 @@ impl Movement {
                 buffer.offset.x = ((buffer.offset.x as i64) + offset_delta) as usize;
                 Ok(())
             }
-            Movement::ToRaw(raw_position) => {
-                let current_raw_position = editor.current_buffer().raw_position() as i64;
-                let delta = raw_position as i64 - current_raw_position;
-                Movement::CursorUnbounded(delta).perform(editor)?;
-                Ok(())
-            }
-            Movement::CursorUnbounded(delta) => {
-                let buffer = editor.current_buffer();
-                let content = buffer.content.inner();
+            Movement::ToRaw(target) => {
+                let current_raw_position = editor.current_buffer().raw_position();
+                let content = editor.current_buffer().content.inner();
 
-                let current_position = editor.current_buffer().raw_position();
-
-                let target = (current_position as i64 + delta).max(0) as usize;
-
-                let min = target.min(current_position);
-                let max = (target.max(current_position) as usize).min(content.len());
+                let min = target.min(current_raw_position);
+                let max = (target.max(current_raw_position) as usize).min(content.len());
 
                 let max_is_new_line = content[max..].starts_with('\n');
 
-                let bounded_content = &content[min..(max + 1)];
+                let bounded_content = &content[min..=max];
 
                 let new_lines = bounded_content.matches('\n').count();
 
@@ -113,7 +103,7 @@ impl Movement {
                     new_lines
                 };
 
-                let lines_delta = if current_position > target {
+                let lines_delta = if current_raw_position > target {
                     -(absolute_lines_delta as i64)
                 } else {
                     absolute_lines_delta as i64
@@ -124,8 +114,13 @@ impl Movement {
                 let current_position = editor.current_buffer().raw_position() as i64;
                 let cursor_delta = target as i64 - current_position;
 
-                Movement::Cursor(cursor_delta).perform(editor)?;
-                Ok(())
+                Movement::Cursor(cursor_delta).perform(editor)
+            }
+            Movement::CursorUnbounded(delta) => {
+                let current_position = editor.current_buffer().raw_position();
+                let target = (current_position as i64 + delta).max(0) as usize;
+
+                Movement::ToRaw(target).perform(editor)
             }
 
             Movement::WordEnd(delta) => {
