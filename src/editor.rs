@@ -13,7 +13,60 @@ pub struct Editor {
     pub mode: Mode,
     pub last_selection: Selection,
     pub clipboard: Clipboard,
-    pub undo_tree: Vec<Action>,
+    pub undo_tree: UndoTree,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct UndoTree {
+    actions: Vec<Action>,
+    insert_index: usize,
+}
+
+impl UndoTree {
+    pub fn push(&mut self, action: Action) {
+        let vec = &mut self.actions;
+        vec.truncate(self.insert_index);
+
+        self.actions.push(action);
+        self.insert_index += 1;
+    }
+
+    pub fn replace_undo(&mut self, action: Action) {
+        if let Some(old_action) = self.actions.get_mut(self.insert_index) {
+            *old_action = action
+        }
+    }
+
+    pub fn replace_redo(&mut self, action: Action) {
+        if let Some(old_action) = self.actions.get_mut(self.insert_index.saturating_sub(1)) {
+            *old_action = action
+        }
+    }
+
+    pub fn undo(&mut self) -> Option<Action> {
+        if self.insert_index == 0 {
+            return None;
+        }
+        let action = self.actions.get(self.insert_index.saturating_sub(1));
+        match action {
+            Some(action) => {
+                self.insert_index = self.insert_index.saturating_sub(1);
+                Some(action.clone())
+            }
+            None => None,
+        }
+    }
+
+    pub fn redo(&mut self) -> Option<Action> {
+        let action = self.actions.get(self.insert_index);
+        match action {
+            Some(action) => {
+                self.insert_index += 1;
+                Some(action.clone())
+            }
+            None => None,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]

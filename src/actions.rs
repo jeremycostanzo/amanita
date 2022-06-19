@@ -27,6 +27,7 @@ impl Action {
             }
             Delete(from, to) => {
                 let content = editor.delete(*from, *to);
+                Movement::ToRaw(*from).perform(editor)?;
                 Ok(Insert(*from, content))
             }
         }
@@ -453,9 +454,23 @@ impl Editor {
     }
 
     pub fn undo(&mut self) -> Result<()> {
-        let last_action = self.undo_tree.pop();
-        if let Some(action) = last_action {
-            action.perform(self)?;
+        tracing::info!("undoing, undo tree: {:?}", &self.undo_tree);
+        let undo_action = self.undo_tree.undo();
+        if let Some(action) = undo_action {
+            let redo_action = action.perform(self)?;
+            self.undo_tree.replace_undo(redo_action);
+            tracing::info!("undid, undo tree: {:?}", &self.undo_tree);
+        }
+        Ok(())
+    }
+
+    pub fn redo(&mut self) -> Result<()> {
+        tracing::info!("redoing, undo tree: {:?}", &self.undo_tree);
+        let redo_action = self.undo_tree.redo();
+        if let Some(action) = redo_action {
+            let undo_action = action.perform(self)?;
+            self.undo_tree.replace_redo(undo_action);
+            tracing::info!("redid, undo tree: {:?}", &self.undo_tree);
         }
         Ok(())
     }

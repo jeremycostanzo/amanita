@@ -37,17 +37,14 @@ async fn main() -> Result<()> {
     setup_panic_hook();
     let args: Vec<String> = env::args().collect();
     let file_name = &args[1];
-    let log = args.get(2).map_or(false, |arg| arg == "--log");
 
-    if log {
-        let home = home::home_dir().expect("Could not find home directory");
-        let path_from_home: PathBuf = [".config", "amanita", "logs"].iter().collect();
-        let log_path = home.join(path_from_home);
+    let home = home::home_dir().expect("Could not find home directory");
+    let path_from_home: PathBuf = [".config", "amanita", "logs"].iter().collect();
+    let log_path = home.join(path_from_home);
 
-        let file_appender = tracing_appender::rolling::hourly(log_path, "debug");
-        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-        tracing_subscriber::fmt().with_writer(non_blocking).init();
-    }
+    let file_appender = tracing_appender::rolling::hourly(log_path, "debug");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    tracing_subscriber::fmt().with_writer(non_blocking).init();
 
     let file_path = Path::new(&file_name);
     let buffers = vec![Buffer::from_file(file_path).await?];

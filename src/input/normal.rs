@@ -19,6 +19,13 @@ pub async fn handle_event(
         }
 
         Event::Key(KeyEvent {
+            code: KeyCode::Char('U'),
+            modifiers: KeyModifiers::SHIFT,
+        }) => {
+            editor.redo()?;
+        }
+
+        Event::Key(KeyEvent {
             code: KeyCode::Char('i'),
             modifiers: KeyModifiers::NONE,
         }) => {

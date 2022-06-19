@@ -10,7 +10,7 @@
 - [x] movement + delete
 - [x] yank
 - [x] paste
-- [ ] undo tree
+- [x] ~ undo tree (not really a tree)
 
 # Week 4
 - [ ] Completion
