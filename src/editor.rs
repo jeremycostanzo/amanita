@@ -106,7 +106,7 @@ impl Editor {
         let end = self.last_selection.end;
         let min = start.min(end);
         let max = start.max(end);
-        Movement::ToRaw(min).do_move(self)?;
+        Movement::ToRaw(min).perform(self)?;
         Movement::ToRaw(max).delete(self)?;
         self.mode = Mode::Normal;
         Ok(())
@@ -124,7 +124,7 @@ impl Editor {
                 .current_line_length()
                 .context("Enter insert mode")?
         {
-            Movement::Cursor(-1).do_move(self)?
+            Movement::Cursor(-1).perform(self)?
         }
         Ok(())
     }

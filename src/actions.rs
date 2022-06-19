@@ -28,7 +28,7 @@ pub enum Movement {
 }
 
 impl Movement {
-    pub fn do_move(self, editor: &mut Editor) -> Result<()> {
+    pub fn perform(self, editor: &mut Editor) -> Result<()> {
         match self {
             Movement::Cursor(delta) => {
                 let line_len = editor
@@ -93,18 +93,18 @@ impl Movement {
                     absolute_lines_delta as i64
                 };
 
-                Movement::Line(lines_delta).do_move(editor)?;
+                Movement::Line(lines_delta).perform(editor)?;
 
                 let current_position = editor.current_buffer().raw_position() as i64;
                 let cursor_delta = target as i64 - current_position;
 
-                Movement::Cursor(cursor_delta).do_move(editor)?;
+                Movement::Cursor(cursor_delta).perform(editor)?;
                 Ok(())
             }
             Movement::ToRaw(raw_position) => {
                 let current_raw_position = editor.current_buffer().raw_position() as i64;
                 let delta = raw_position as i64 - current_raw_position;
-                Movement::CursorUnbounded(delta).do_move(editor)?;
+                Movement::CursorUnbounded(delta).perform(editor)?;
                 Ok(())
             }
             Movement::Line(delta) => {
@@ -132,7 +132,7 @@ impl Movement {
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_end_index(delta);
                 let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::CursorUnbounded(cursor_delta).do_move(editor)?;
+                Movement::CursorUnbounded(cursor_delta).perform(editor)?;
                 Ok(())
             }
 
@@ -140,7 +140,7 @@ impl Movement {
                 let buffer = editor.current_buffer();
                 let target = buffer.nth_word_index(delta);
                 let cursor_delta = target as i64 - buffer.raw_position() as i64;
-                Movement::CursorUnbounded(cursor_delta).do_move(editor)?;
+                Movement::CursorUnbounded(cursor_delta).perform(editor)?;
                 Ok(())
             }
             Movement::EndOfLine => {
@@ -156,19 +156,19 @@ impl Movement {
                 let delta = target.checked_sub(current_buffer.x()).ok_or_else(|| {
                     anyhow!("attempted to substract {} from {}", x, target).context("End of line")
                 })?;
-                Movement::Cursor(delta as i64).do_move(editor)
+                Movement::Cursor(delta as i64).perform(editor)
             }
             Movement::BeginningOfLine => {
                 let current_buffer = editor.current_buffer();
                 let x = current_buffer.x();
-                Movement::Cursor(-(x as i64)).do_move(editor)
+                Movement::Cursor(-(x as i64)).perform(editor)
             }
             Movement::Char { char, delta } => {
                 let current_buffer = editor.current_buffer();
                 let target = current_buffer.next_char_index(char, delta);
 
                 if let Some(target) = target {
-                    Movement::ToRaw(target).do_move(editor)?;
+                    Movement::ToRaw(target).perform(editor)?;
                 }
 
                 Ok(())
@@ -179,9 +179,9 @@ impl Movement {
 
                 if let Some(target) = target {
                     if delta >= 0 {
-                        Movement::ToRaw(target.saturating_sub(1)).do_move(editor)?;
+                        Movement::ToRaw(target.saturating_sub(1)).perform(editor)?;
                     } else {
-                        Movement::ToRaw(target + 1).do_move(editor)?;
+                        Movement::ToRaw(target + 1).perform(editor)?;
                     }
                 }
 
@@ -198,12 +198,12 @@ impl Movement {
                     .map(|(i, _)| i);
 
                 let x_to = index.unwrap_or(0) as i64;
-                Movement::Cursor(x_to - (x as i64)).do_move(editor)
+                Movement::Cursor(x_to - (x as i64)).perform(editor)
             }
-            Movement::BeginningOfFile => Movement::ToRaw(0).do_move(editor),
+            Movement::BeginningOfFile => Movement::ToRaw(0).perform(editor),
             Movement::EndOfFile => {
                 let len = editor.current_buffer().content.inner().len();
-                Movement::ToRaw(len.saturating_sub(1)).do_move(editor)
+                Movement::ToRaw(len.saturating_sub(1)).perform(editor)
             }
         }
     }
@@ -212,7 +212,7 @@ impl Movement {
         if editor.mode != Mode::Visual {
             bail!("Editor mode is {} but visual move was called", editor.mode);
         }
-        self.do_move(editor).with_context(|| "Visual move")?;
+        self.perform(editor).with_context(|| "Visual move")?;
         let new_raw_cursor_position = editor.current_buffer().raw_position();
         let mut last_selection = &mut editor.last_selection;
         last_selection.end = new_raw_cursor_position;
@@ -221,7 +221,7 @@ impl Movement {
 
     pub fn delete(self, editor: &mut Editor) -> Result<()> {
         let position = editor.current_buffer().raw_position();
-        self.do_move(editor).context("Delete")?;
+        self.perform(editor).context("Delete")?;
         let position_after_move = editor.current_buffer().raw_position();
 
         let from = position.min(position_after_move);
@@ -247,13 +247,13 @@ impl Movement {
         // In case last line is deleted to prevent the cursor from going out of bounds
         editor.adjust_y()?;
         editor.adjust_x()?;
-        Movement::ToRaw(from).do_move(editor)?;
+        Movement::ToRaw(from).perform(editor)?;
         Ok(())
     }
 
     pub fn yank(&self, editor: &mut Editor) -> Result<()> {
         let old_position = editor.current_buffer().raw_position();
-        self.do_move(editor).context("First move in yank")?;
+        self.perform(editor).context("First move in yank")?;
         let new_position = editor.current_buffer().raw_position();
         let min = old_position.min(new_position);
         let max = old_position.max(new_position);
@@ -264,7 +264,7 @@ impl Movement {
         };
 
         Movement::ToRaw(old_position)
-            .do_move(editor)
+            .perform(editor)
             .context("Move back when yanking")
     }
 }
@@ -315,7 +315,7 @@ impl Editor {
         let content = self.current_buffer_mut().content.inner_mut();
         content.insert(pos, '\n');
 
-        Movement::Line(1).do_move(self).context("Insert new line")?;
+        Movement::Line(1).perform(self).context("Insert new line")?;
 
         let buffer = self.current_buffer_mut();
         buffer.offset.x = 0;
@@ -343,9 +343,9 @@ impl Editor {
                 .map(|(indice, _)| indice)
                 .unwrap_or(0)
         };
-        Movement::ToRaw(indice + 1).do_move(self)?;
+        Movement::ToRaw(indice + 1).perform(self)?;
         self.insert_newline()?;
-        Movement::Line(-1).do_move(self)?;
+        Movement::Line(-1).perform(self)?;
         Ok(())
     }
 
@@ -356,7 +356,7 @@ impl Editor {
 
         content.insert(pos, c);
 
-        Movement::Cursor(1).do_move(self).map_err(Into::into)
+        Movement::Cursor(1).perform(self).map_err(Into::into)
     }
 
     pub fn paste(&mut self) {
@@ -381,8 +381,8 @@ impl Editor {
 
             let content = buffer.content.inner_mut();
             content.remove(pos - 1);
-            Movement::Line(-1).do_move(self)?;
-            Movement::Cursor(len as i64).do_move(self)?;
+            Movement::Line(-1).perform(self)?;
+            Movement::Cursor(len as i64).perform(self)?;
         } else {
             let content = buffer.content.inner_mut();
             let char = content.remove(pos - 1);
@@ -390,9 +390,9 @@ impl Editor {
                 content.remove(pos - 2);
                 content.remove(pos - 3);
                 content.remove(pos - 4);
-                Movement::Cursor(-4).do_move(self)?;
+                Movement::Cursor(-4).perform(self)?;
             } else {
-                Movement::Cursor(-1).do_move(self)?;
+                Movement::Cursor(-1).perform(self)?;
             }
         }
         Ok(())
