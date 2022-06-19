@@ -12,6 +12,13 @@ pub async fn handle_event(
 ) -> anyhow::Result<Option<LeaveProgram>> {
     match event {
         Event::Key(KeyEvent {
+            code: KeyCode::Char('u'),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            editor.undo()?;
+        }
+
+        Event::Key(KeyEvent {
             code: KeyCode::Char('i'),
             modifiers: KeyModifiers::NONE,
         }) => {
@@ -233,7 +240,7 @@ pub async fn handle_event(
         Event::Key(KeyEvent {
             code: KeyCode::Char('p'),
             modifiers: KeyModifiers::NONE,
-        }) => editor.paste(),
+        }) => editor.paste()?,
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('c'),

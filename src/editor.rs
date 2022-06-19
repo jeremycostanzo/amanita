@@ -1,3 +1,4 @@
+use crate::actions::Action;
 use crate::actions::Movement;
 use crate::buffer::Buffer;
 use crate::modes::Mode;
@@ -12,6 +13,7 @@ pub struct Editor {
     pub mode: Mode,
     pub last_selection: Selection,
     pub clipboard: Clipboard,
+    pub undo_tree: Vec<Action>,
 }
 
 #[derive(Debug, Default, Clone)]

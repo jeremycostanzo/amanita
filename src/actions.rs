@@ -3,6 +3,36 @@ use crate::modes::Mode;
 use anyhow::Context;
 use anyhow::{bail, Result};
 
+type Content = String;
+type At = usize;
+type From = usize;
+type To = usize;
+
+#[derive(Clone, Debug)]
+pub enum Action {
+    Insert(At, Content),
+    Delete(From, To),
+}
+
+impl Action {
+    /// perform does the action and returns the action that is necessary to undo it
+    pub fn perform(&self, editor: &mut Editor) -> Result<Action> {
+        use Action::*;
+        match self {
+            Insert(at, content) => {
+                Movement::ToRaw(*at).perform(editor)?;
+                editor.insert(content)?;
+                let len = content.len();
+                Ok(Delete(*at, at + len))
+            }
+            Delete(from, to) => {
+                let content = editor.delete(*from, *to);
+                Ok(Insert(*from, content))
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Movement {
     // Most basic movement: move the cursor by n characters in the line
@@ -212,13 +242,13 @@ impl Movement {
     }
 
     pub fn delete(self, editor: &mut Editor) -> Result<()> {
-        let position = editor.current_buffer().raw_position();
+        let old_position = editor.current_buffer().raw_position();
         self.perform(editor).context("Delete")?;
         let position_after_move = editor.current_buffer().raw_position();
 
-        let from = position.min(position_after_move);
-        let to = if position > position_after_move {
-            position
+        let from = old_position.min(position_after_move);
+        let to = if old_position > position_after_move {
+            old_position
         } else {
             position_after_move + 1
         };
@@ -230,6 +260,9 @@ impl Movement {
                 .chars()
                 .collect(),
         };
+
+        let deleted_content = editor.current_buffer().content.inner()[from..boxed_to].to_owned();
+
         editor
             .current_buffer_mut()
             .content
@@ -239,7 +272,13 @@ impl Movement {
         // In case last line is deleted to prevent the cursor from going out of bounds
         editor.adjust_y()?;
         editor.adjust_x()?;
+
         Movement::ToRaw(from).perform(editor)?;
+        editor.clipboard = Clipboard {
+            content: deleted_content.clone(),
+        };
+
+        editor.undo_tree.push(Action::Insert(from, deleted_content));
         Ok(())
     }
 
@@ -313,6 +352,11 @@ impl Editor {
         buffer.offset.x = 0;
         buffer.screen_cursor_position.x = 0;
 
+        let position = self.current_buffer().raw_position();
+
+        self.undo_tree
+            .push(Action::Delete(position.saturating_sub(1), position));
+
         Ok(())
     }
 
@@ -342,22 +386,40 @@ impl Editor {
     }
 
     pub fn insert_char(&mut self, c: char) -> Result<()> {
-        let buffer = self.current_buffer_mut();
-        let pos = buffer.raw_position();
-        let content = buffer.content.inner_mut();
-
-        content.insert(pos, c);
-
-        Movement::Cursor(1).perform(self).map_err(Into::into)
+        self.insert(c.to_string().as_str())
     }
 
-    pub fn paste(&mut self) {
-        let content = self.clipboard.content.to_string();
+    pub fn insert(&mut self, content: &str) -> Result<()> {
         let pos = self.current_buffer().raw_position();
         self.current_buffer_mut()
             .content
             .inner_mut()
-            .insert_str(pos, &content);
+            .insert_str(pos, content);
+        let len = content.len();
+
+        Movement::CursorUnbounded(len as i64).perform(self)
+    }
+
+    // Delete from min(from, to) to (excluding) max(from, to)
+    pub fn delete(&mut self, from: usize, to: usize) -> String {
+        let len = self.current_buffer().content.inner().len();
+
+        let min = from.min(to).max(0);
+        let max = from.max(to).min(len);
+
+        let content = self.current_buffer().content.inner()[min..max].to_owned();
+
+        self.current_buffer_mut()
+            .content
+            .inner_mut()
+            .replace_range(min..max, "");
+
+        content
+    }
+
+    pub fn paste(&mut self) -> Result<()> {
+        let content = self.clipboard.content.to_string();
+        self.insert(&content)
     }
 
     pub fn delete_char(&mut self) -> Result<()> {
@@ -386,6 +448,14 @@ impl Editor {
             } else {
                 Movement::Cursor(-1).perform(self)?;
             }
+        }
+        Ok(())
+    }
+
+    pub fn undo(&mut self) -> Result<()> {
+        let last_action = self.undo_tree.pop();
+        if let Some(action) = last_action {
+            action.perform(self)?;
         }
         Ok(())
     }

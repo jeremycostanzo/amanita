@@ -159,12 +159,16 @@ pub async fn handle_event(
         Event::Key(KeyEvent {
             code: KeyCode::Char('g'),
             modifiers: KeyModifiers::NONE,
-        }) => Movement::BeginningOfFile.delete(editor)?,
+        }) => {
+            Movement::BeginningOfFile.delete(editor)?;
+        }
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('G'),
             modifiers: KeyModifiers::SHIFT,
-        }) => Movement::EndOfFile.delete(editor)?,
+        }) => {
+            Movement::EndOfFile.delete(editor)?;
+        }
 
         Event::Key(KeyEvent {
             code: KeyCode::Char('c'),
