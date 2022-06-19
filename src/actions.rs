@@ -30,6 +30,26 @@ pub enum Movement {
 impl Movement {
     pub fn perform(self, editor: &mut Editor) -> Result<()> {
         match self {
+            Movement::Line(delta) => {
+                let heigth = editor.screen().heigth;
+
+                let buffer = editor.current_buffer_mut();
+
+                let y = buffer.y() as i64;
+                let boxed_delta = delta
+                    .max(-y)
+                    .min(buffer.content.inner().lines().count() as i64 - y - 1);
+                let cursor_position = buffer.screen_cursor_position.y;
+                let cursor_position_delta = boxed_delta
+                    .max(-(cursor_position as i64))
+                    .min((heigth - cursor_position - 1) as i64);
+                let offset_delta = boxed_delta - cursor_position_delta;
+
+                buffer.screen_cursor_position.y =
+                    (buffer.screen_cursor_position.y as i64 + cursor_position_delta) as u16;
+                buffer.offset.y = ((buffer.offset.y as i64) + offset_delta) as usize;
+                editor.adjust_x().map_err(Into::into)
+            }
             Movement::Cursor(delta) => {
                 let line_len = editor
                     .current_buffer()
@@ -62,6 +82,12 @@ impl Movement {
                 buffer.screen_cursor_position.x =
                     (buffer.screen_cursor_position.x as i64 + cursor_position_delta) as u16;
                 buffer.offset.x = ((buffer.offset.x as i64) + offset_delta) as usize;
+                Ok(())
+            }
+            Movement::ToRaw(raw_position) => {
+                let current_raw_position = editor.current_buffer().raw_position() as i64;
+                let delta = raw_position as i64 - current_raw_position;
+                Movement::CursorUnbounded(delta).perform(editor)?;
                 Ok(())
             }
             Movement::CursorUnbounded(delta) => {
@@ -100,32 +126,6 @@ impl Movement {
 
                 Movement::Cursor(cursor_delta).perform(editor)?;
                 Ok(())
-            }
-            Movement::ToRaw(raw_position) => {
-                let current_raw_position = editor.current_buffer().raw_position() as i64;
-                let delta = raw_position as i64 - current_raw_position;
-                Movement::CursorUnbounded(delta).perform(editor)?;
-                Ok(())
-            }
-            Movement::Line(delta) => {
-                let heigth = editor.screen().heigth;
-
-                let buffer = editor.current_buffer_mut();
-
-                let y = buffer.y() as i64;
-                let boxed_delta = delta
-                    .max(-y)
-                    .min(buffer.content.inner().lines().count() as i64 - y - 1);
-                let cursor_position = buffer.screen_cursor_position.y;
-                let cursor_position_delta = boxed_delta
-                    .max(-(cursor_position as i64))
-                    .min((heigth - cursor_position - 1) as i64);
-                let offset_delta = boxed_delta - cursor_position_delta;
-
-                buffer.screen_cursor_position.y =
-                    (buffer.screen_cursor_position.y as i64 + cursor_position_delta) as u16;
-                buffer.offset.y = ((buffer.offset.y as i64) + offset_delta) as usize;
-                editor.adjust_x().map_err(Into::into)
             }
 
             Movement::WordEnd(delta) => {
