@@ -159,15 +159,19 @@ impl Cell {
 
 impl Editor {
     pub fn render(&mut self) -> Result<()> {
-        let CursorPosition { x, y } = self.current_buffer().screen_cursor_position;
+        let current_buffer = self.current_buffer();
+        let CursorPosition { x, y } = current_buffer.screen_cursor_position;
         let screen_contents = self.screen_contents();
-        let file_name = self
-            .current_buffer()
+        let file_name = current_buffer
             .file_name
             .as_ref()
             .and_then(|p| p.to_str().map(ToOwned::to_owned))
             .unwrap_or_default()
             .with(Color::White);
+
+        let x_raw = current_buffer.x();
+        let y_raw = current_buffer.y();
+        let coordinates = format!("{x_raw},{y_raw}");
 
         let screen = &mut self.screen;
 
@@ -199,6 +203,13 @@ impl Editor {
         screen
             .queue(cursor::MoveTo(0, screen.heigth + 1))?
             .queue(style::PrintStyledContent(file_name))?;
+
+        screen
+            .queue(cursor::MoveTo(
+                screen.width - coordinates.len() as u16 - 1,
+                screen.heigth + 1,
+            ))?
+            .queue(style::PrintStyledContent(coordinates.with(Color::White)))?;
 
         queue!(screen, cursor::MoveTo(x, y))?;
         queue!(screen, cursor::Show)?;
