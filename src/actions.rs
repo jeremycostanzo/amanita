@@ -362,6 +362,8 @@ impl Editor {
     }
 
     pub fn insert_newline_in_n_lines(&mut self, n: i64) -> Result<()> {
+        let mode = self.mode.clone();
+        self.mode = Mode::Insert;
         let buffer = &mut self.current_buffer_mut();
         let pos = buffer.raw_position();
         let content = buffer.content.inner_mut();
@@ -369,9 +371,8 @@ impl Editor {
             content[pos..]
                 .match_indices('\n')
                 .nth(n as usize)
-                .map(|(indice, _)| indice)
+                .map(|(indice, _)| indice + pos)
                 .unwrap_or(content.len())
-                + pos
         } else {
             content[..pos]
                 .match_indices('\n')
@@ -380,9 +381,12 @@ impl Editor {
                 .map(|(indice, _)| indice)
                 .unwrap_or(0)
         };
-        Movement::ToRaw(indice + 1).perform(self)?;
+        Movement::ToRaw(indice).perform(self)?;
         self.insert_newline()?;
-        Movement::Line(-1).perform(self)?;
+        if indice == 0 {
+            Movement::Line(-1).perform(self)?;
+        }
+        self.mode = mode;
         Ok(())
     }
 
