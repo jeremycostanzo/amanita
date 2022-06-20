@@ -46,7 +46,7 @@ impl Screen {
             text_start_x: 0,
             text_start_y: 0,
             width,
-            heigth,
+            heigth: heigth - 1,
             terminal,
         })
     }
@@ -161,6 +161,14 @@ impl Editor {
     pub fn render(&mut self) -> Result<()> {
         let CursorPosition { x, y } = self.current_buffer().screen_cursor_position;
         let screen_contents = self.screen_contents();
+        let file_name = self
+            .current_buffer()
+            .file_name
+            .as_ref()
+            .and_then(|p| p.to_str().map(ToOwned::to_owned))
+            .unwrap_or_default()
+            .with(Color::White);
+
         let screen = &mut self.screen;
 
         queue!(screen, cursor::Hide)?;
@@ -187,6 +195,10 @@ impl Editor {
                 .queue(cursor::MoveTo(0, y))?
                 .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
         }
+
+        screen
+            .queue(cursor::MoveTo(0, screen.heigth + 1))?
+            .queue(style::PrintStyledContent(file_name))?;
 
         queue!(screen, cursor::MoveTo(x, y))?;
         queue!(screen, cursor::Show)?;
