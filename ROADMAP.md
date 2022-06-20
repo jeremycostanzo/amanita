@@ -1,4 +1,8 @@
-# Current week (Week 3)
+# Current week (Week 4)
+- [ ] Completion
+- [ ] Status line to display file, mode, cursor position
+
+# Week 3
 - [x] $ ^
 - [x] f F
 - [x] t T
@@ -11,10 +15,6 @@
 - [x] yank
 - [x] paste
 - [x] ~ undo tree (not really a tree)
-
-# Week 4
-- [ ] Completion
-- [ ] Status line to display file, mode, cursor position
 
 # Week 5
 - [ ] LSP support
