@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod buffer;
+pub mod completion;
 pub mod editor;
 pub mod input;
 pub mod modes;
