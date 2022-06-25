@@ -1,11 +1,14 @@
 use crate::actions::Action;
 use crate::actions::Movement;
 use crate::buffer::Buffer;
+use crate::completion::CompletionWords;
 use crate::modes::Mode;
 use crate::ui::Screen;
+
 use anyhow::Context;
 use anyhow::{bail, Result};
-#[derive(Debug, Default, Clone)]
+
+#[derive(Default, Clone, Debug)]
 pub struct Editor {
     pub buffers: Vec<Buffer>,
     pub screen: Screen,
@@ -14,6 +17,7 @@ pub struct Editor {
     pub last_selection: Selection,
     pub clipboard: Clipboard,
     pub undo_tree: UndoTree,
+    pub completion_words: Option<CompletionWords>,
 }
 
 #[derive(Debug, Default, Clone)]

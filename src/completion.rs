@@ -1,9 +1,40 @@
+use crate::actions::Movement;
+use crate::buffer::Buffer;
 use crate::editor::Editor;
+use anyhow::Result;
 use itertools::Itertools;
-use std::collections::BTreeSet;
 
 use regex::Regex;
 
+/// This struct behaves like a bidirectional iterator over the completion words
+#[derive(Clone, Default, Debug)]
+pub struct CompletionWords {
+    words: Vec<String>,
+    indice: usize,
+}
+
+impl CompletionWords {
+    fn next(&mut self, direction: CompletionDirection) -> &str {
+        match direction {
+            CompletionDirection::Forward => {
+                let word = self.words[self.indice].as_str();
+                self.indice = (self.indice + 1) % self.words.len();
+                word
+            }
+            CompletionDirection::Backward => {
+                let word = self.words[self.indice].as_str();
+
+                self.indice = (self.indice as i64 - 1)
+                    .rem_euclid(self.words.len() as i64)
+                    .try_into()
+                    .unwrap();
+                word
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 enum CompletionDirection {
     Backward,
     Forward,
@@ -13,7 +44,7 @@ fn get_completion_matches(
     content: &str,
     raw_cursor_position: usize,
     direction: CompletionDirection,
-) -> Vec<&str> {
+) -> CompletionWords {
     let buffer_length = content.len();
     let start_indice = content[..raw_cursor_position]
         .rmatch_indices(|c: char| !c.is_alphanumeric())
@@ -22,49 +53,71 @@ fn get_completion_matches(
 
     let start_pattern = &content[start_indice..raw_cursor_position];
 
-    let re = Regex::new(&format!(r"\W?({start_pattern}\w*)")).unwrap();
+    let re = Regex::new(&format!(r"(\W|^)({start_pattern}\w*)")).unwrap();
 
-    let captures_before = re.captures_iter(&content[..start_indice]).map(|capture| {
-        let re_match = capture.get(1).unwrap();
-        re_match.as_str()
-    });
+    let captures_before = re.captures_iter(&content[..start_indice]);
+    let captures_after = re.captures_iter(&content[raw_cursor_position..]);
 
-    let captures_after = re
-        .captures_iter(&content[raw_cursor_position..])
+    let completion_words = captures_after
+        .chain(captures_before)
         .map(|capture| {
-            let re_match = capture.get(1).unwrap();
+            let re_match = capture.get(2).unwrap();
             re_match.as_str()
-        });
-
-    let mut completion_words = captures_after.chain(captures_before).collect::<Vec<_>>();
-
-    match direction {
-        CompletionDirection::Forward => {}
-        CompletionDirection::Backward => completion_words.reverse(),
-    }
-
-    completion_words
-        .into_iter()
-        .unique()
+        })
         .filter(|word| !word.is_empty())
-        .collect()
+        .map(|word| word.to_owned());
+
+    let unique = match direction {
+        CompletionDirection::Forward => completion_words.unique().collect::<Vec<_>>(),
+        CompletionDirection::Backward => {
+            let mut reversed_words = completion_words.collect::<Vec<_>>();
+            reversed_words.reverse();
+
+            let mut unique = reversed_words.into_iter().unique().collect::<Vec<_>>();
+            unique.reverse();
+            unique
+        }
+    };
+
+    let len = unique.len();
+
+    CompletionWords {
+        words: unique,
+        indice: match direction {
+            CompletionDirection::Backward => len - 1,
+            CompletionDirection::Forward => 0,
+        },
+    }
+}
+
+impl Buffer {
+    fn get_completion_matches(&self, direction: CompletionDirection) -> CompletionWords {
+        let raw_cursor_position = self.raw_position();
+        let content = self.content.inner();
+        get_completion_matches(content, raw_cursor_position, direction)
+    }
 }
 
 impl Editor {
-    /// Get all the words that start with starts
-    /// Excpects that start only contains word characters
-    fn get_completion_matches_forward(&self) -> Vec<&str> {
-        let current_buffer = self.current_buffer();
-        let raw_cursor_position = current_buffer.raw_position();
-        let content = current_buffer.content.inner();
-        get_completion_matches(content, raw_cursor_position, CompletionDirection::Forward)
+    fn insert_completion(&mut self, direction: CompletionDirection) -> Result<()> {
+        if self.completion_words.is_none() {
+            self.completion_words = Some(self.current_buffer().get_completion_matches(direction))
+        }
+
+        let completion_words = self.completion_words.as_mut().unwrap();
+
+        let word = completion_words.next(direction).to_owned();
+        Movement::Word(-1).delete(self)?;
+
+        self.insert(&word)
     }
 
-    fn get_completion_matches_backward(&self) -> Vec<&str> {
-        let current_buffer = self.current_buffer();
-        let raw_cursor_position = current_buffer.raw_position();
-        let content = current_buffer.content.inner();
-        get_completion_matches(content, raw_cursor_position, CompletionDirection::Backward)
+    pub fn insert_completion_forward(&mut self) -> Result<()> {
+        self.insert_completion(CompletionDirection::Forward)
+    }
+
+    pub fn insert_completion_backward(&mut self) -> Result<()> {
+        self.insert_completion(CompletionDirection::Backward)
     }
 }
 
@@ -74,22 +127,14 @@ mod tests {
 
     #[test]
     fn completion_test() {
-        // Cursor is here          v
-        let content = r#"con,cont,cconten content; c_onte' ca""#;
-        let completion_matches_backward =
-            get_completion_matches(content, 10, CompletionDirection::Backward);
+        // Cursor is here            v
+        let content = "con,\n\ncont,cconten content; c_onte' ca";
 
-        assert_eq!(
-            vec!["cont", "con", "ca", "c_onte", "content", "conten"],
-            completion_matches_backward
-        );
-
-        let completion_matches_forward =
-            get_completion_matches(content, 10, CompletionDirection::Forward);
+        let completion_matches = get_completion_matches(content, 12, CompletionDirection::Forward);
 
         assert_eq!(
             vec!["conten", "content", "c_onte", "ca", "con", "cont"],
-            completion_matches_forward
+            completion_matches.words
         );
     }
 
@@ -100,15 +145,18 @@ mod tests {
         let completion_matches_backward =
             get_completion_matches(content, 10, CompletionDirection::Forward);
 
-        assert_eq!(vec!["con"], completion_matches_backward);
+        assert_eq!(vec!["con"], completion_matches_backward.words);
     }
 
     #[test]
     fn complete_everything_test() {
         let content = "a, b c d e ";
-        let completion_matches_backward =
+        let completion_matches_forward =
             get_completion_matches(content, 11, CompletionDirection::Forward);
 
-        assert_eq!(vec!["a", "b", "c", "d", "e"], completion_matches_backward);
+        assert_eq!(
+            vec!["a", "b", "c", "d", "e"],
+            completion_matches_forward.words
+        );
     }
 }

@@ -17,20 +17,34 @@ pub async fn handle_event(
         }) => {
             editor.save().await?;
         }
+
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('p'),
+            modifiers: KeyModifiers::CONTROL,
+        }) => editor.insert_completion_backward()?,
+
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('n'),
+            modifiers: KeyModifiers::CONTROL,
+        }) => editor.insert_completion_forward()?,
+
         Event::Key(KeyEvent {
             code: KeyCode::Char('a'),
             modifiers: KeyModifiers::CONTROL,
         }) => Movement::BeginningOfLine.perform(editor)?,
+
         Event::Key(KeyEvent {
             code: KeyCode::Char('e'),
             modifiers: KeyModifiers::CONTROL,
         }) => Movement::EndOfLine.perform(editor)?,
+
         Event::Key(KeyEvent {
             code: KeyCode::Char(c),
             modifiers: KeyModifiers::NONE,
         }) => {
             editor.insert_char(c)?;
         }
+
         Event::Key(KeyEvent {
             code: KeyCode::Char(c),
             modifiers: KeyModifiers::SHIFT,
@@ -40,12 +54,14 @@ pub async fn handle_event(
                 editor.insert_char(uppercase_chars[0])?;
             }
         }
+
         Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::CONTROL,
         }) => {
             Movement::Word(1).perform(editor)?;
         }
+
         Event::Key(KeyEvent {
             code: KeyCode::Right,
             ..
@@ -118,5 +134,18 @@ pub async fn handle_event(
         }
         _ => {}
     };
+
+    tracing::info!("completion: {:?}", &editor.completion_words);
+
+    if !matches!(
+        event,
+        Event::Key(KeyEvent {
+            code: KeyCode::Char('p' | 'n'),
+            modifiers: KeyModifiers::CONTROL,
+        })
+    ) {
+        editor.completion_words = None
+    }
+
     Ok(None)
 }

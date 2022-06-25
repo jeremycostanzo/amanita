@@ -8,6 +8,7 @@ type At = usize;
 type From = usize;
 type To = usize;
 
+/// Those actions are stored in the undo tree
 #[derive(Clone, Debug)]
 pub enum Action {
     Insert(At, Content),
@@ -454,6 +455,7 @@ impl Editor {
                 Movement::Cursor(-1).perform(self)?;
             }
         }
+        self.completion_words = None;
         Ok(())
     }
 

@@ -1,5 +1,5 @@
 # Current week (Week 4)
-- [ ] Completion
+- [x] Completion
 - [x] Status line to display file, cursor position
 
 # Week 5
