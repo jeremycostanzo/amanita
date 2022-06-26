@@ -330,7 +330,19 @@ impl Buffer {
 
         target
     }
+
+    pub fn search(&self, substring: &str, direction: crate::Direction) -> Option<usize> {
+        let content = self.content.inner();
+        let position = self.raw_position();
+
+        use crate::Direction;
+        match direction {
+            Direction::Forward => content[position..].find(substring),
+            Direction::Backward => content[position..].rfind(substring),
+        }
+    }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
