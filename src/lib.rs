@@ -17,3 +17,9 @@ impl std::fmt::Display for OutOfBounds {
 }
 
 impl std::error::Error for OutOfBounds {}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Direction {
+    Backward,
+    Forward,
+}
