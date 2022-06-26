@@ -19,12 +19,12 @@ pub async fn handle_event(
         }
 
         Event::Key(KeyEvent {
-            code: KeyCode::Char('p'),
+            code: KeyCode::Char('j'),
             modifiers: KeyModifiers::CONTROL,
         }) => editor.insert_completion_backward()?,
 
         Event::Key(KeyEvent {
-            code: KeyCode::Char('n'),
+            code: KeyCode::Char('k'),
             modifiers: KeyModifiers::CONTROL,
         }) => editor.insert_completion_forward()?,
 
