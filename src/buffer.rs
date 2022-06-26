@@ -102,12 +102,63 @@ impl Buffer {
         Ok(self.content.inner().lines().count())
     }
 
-    /// I consider three "groups":
-    /// [alphanumeric characters](char::is_alphanumeric)
-    /// [punctuation](char::is_punctuation)
-    /// if the cursor is on one of these groups, it will move to the next cursor that is not in it.
-    /// If there is a whitespace, it moves to the first character that is not a whitespace after
-    /// that.
+    pub async fn save(&self) -> anyhow::Result<()> {
+        let file_name = self
+            .file_name
+            .as_ref()
+            .ok_or(NoFileName)
+            .context("Tried to save with no file name")?;
+        let buffer_string: String = self.content.inner().replace("\t\t\t\t", "\t");
+
+        let mut file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(file_name)
+            .await?;
+
+        file.write_all(buffer_string.as_bytes()).await?;
+        Ok(())
+    }
+
+    pub async fn from_file(path: &Path) -> Result<Self> {
+        let content = fs::read_to_string(path)
+            .await
+            .unwrap_or_else(|_| Default::default())
+            .parse()?;
+
+        Ok(Buffer {
+            content,
+            screen_cursor_position: Default::default(),
+            offset: Default::default(),
+            file_name: Some(path.to_owned()),
+        })
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+enum CharacterType {
+    Word,
+    Punctuation,
+    Other,
+}
+
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+impl From<char> for CharacterType {
+    fn from(c: char) -> Self {
+        if is_word_char(c) {
+            CharacterType::Word
+        } else if c.is_ascii_punctuation() {
+            CharacterType::Punctuation
+        } else {
+            CharacterType::Other
+        }
+    }
+}
+
+impl Buffer {
     fn next_word_index(&self, position: usize) -> usize {
         let inner = self.content.inner();
         let mut chars = inner.chars().skip(position);
@@ -118,12 +169,12 @@ impl Buffer {
         for index in (position + 1)..inner.len() {
             let char_type_on_index: CharacterType = chars.next().unwrap().into();
             match (char_type_on_cursor, char_type_on_index) {
-                (CharacterType::Alphanumeric, CharacterType::Punctuation)
-                | (CharacterType::Punctuation, CharacterType::Alphanumeric)
-                | (CharacterType::Other, CharacterType::Alphanumeric)
+                (CharacterType::Word, CharacterType::Punctuation)
+                | (CharacterType::Punctuation, CharacterType::Word)
+                | (CharacterType::Other, CharacterType::Word)
                 | (CharacterType::Other, CharacterType::Punctuation) => return index,
                 (_, CharacterType::Other) => went_through_other = true,
-                (CharacterType::Alphanumeric, CharacterType::Alphanumeric)
+                (CharacterType::Word, CharacterType::Word)
                 | (CharacterType::Punctuation, CharacterType::Punctuation) => {
                     if went_through_other {
                         return index;
@@ -149,13 +200,13 @@ impl Buffer {
         for index in (0..(position - 2)).rev() {
             let char_type_on_index: CharacterType = chars.next().unwrap().into();
             match (locked_character_type, char_type_on_index) {
-                (CharacterType::Alphanumeric, CharacterType::Punctuation)
-                | (CharacterType::Punctuation, CharacterType::Alphanumeric)
-                | (CharacterType::Alphanumeric, CharacterType::Other)
+                (CharacterType::Word, CharacterType::Punctuation)
+                | (CharacterType::Punctuation, CharacterType::Word)
+                | (CharacterType::Word, CharacterType::Other)
                 | (CharacterType::Punctuation, CharacterType::Other) => return index + 2,
 
                 (CharacterType::Other, CharacterType::Other)
-                | (CharacterType::Alphanumeric, CharacterType::Alphanumeric)
+                | (CharacterType::Word, CharacterType::Word)
                 | (CharacterType::Punctuation, CharacterType::Punctuation) => {}
 
                 (CharacterType::Other, alpha_or_punctuation) => {
@@ -279,59 +330,7 @@ impl Buffer {
 
         target
     }
-
-    pub async fn save(&self) -> anyhow::Result<()> {
-        let file_name = self
-            .file_name
-            .as_ref()
-            .ok_or(NoFileName)
-            .context("Tried to save with no file name")?;
-        let buffer_string: String = self.content.inner().replace("\t\t\t\t", "\t");
-
-        let mut file = tokio::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(file_name)
-            .await?;
-
-        file.write_all(buffer_string.as_bytes()).await?;
-        Ok(())
-    }
-
-    pub async fn from_file(path: &Path) -> Result<Self> {
-        let content = fs::read_to_string(path)
-            .await
-            .unwrap_or_else(|_| Default::default())
-            .parse()?;
-
-        Ok(Buffer {
-            content,
-            screen_cursor_position: Default::default(),
-            offset: Default::default(),
-            file_name: Some(path.to_owned()),
-        })
-    }
 }
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-enum CharacterType {
-    Alphanumeric,
-    Punctuation,
-    Other,
-}
-
-impl From<char> for CharacterType {
-    fn from(c: char) -> Self {
-        if c.is_alphanumeric() {
-            CharacterType::Alphanumeric
-        } else if c.is_ascii_punctuation() {
-            CharacterType::Punctuation
-        } else {
-            CharacterType::Other
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
