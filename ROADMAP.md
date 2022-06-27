@@ -1,8 +1,4 @@
-# Current week (Week 4)
-- [x] Completion
-- [x] Status line to display file, cursor position
-
-# Week 5
+# Current week (Week 5)
 - [ ] DRY Input and make it easy to change
 - [ ] Search
 - [ ] Find and replace
@@ -16,6 +12,11 @@
 - [ ] git support
 - [ ] Line wrap
 - [ ] Multiple windows
+
+# Week 4
+- [x] Completion
+- [x] Status line to display file, cursor position
+
 
 # Week 3
 - [x] $ ^
