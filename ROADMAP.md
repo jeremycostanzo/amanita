@@ -3,15 +3,18 @@
 - [x] Status line to display file, cursor position
 
 # Week 5
-- [ ] LSP support
+- [ ] DRY Input and make it easy to change
+- [ ] Search
+- [ ] Find and replace
 
 # Week 6 and beyond
 - [ ] File browser
+- [ ] Multiple buffers
+- [ ] Print line number
+- [ ] LSP support
 - [ ] Syntax highlighting with treesitter
 - [ ] git support
 - [ ] Line wrap
-- [ ] Print line number
-- [ ] Multiple buffers
 - [ ] Multiple windows
 
 # Week 3
