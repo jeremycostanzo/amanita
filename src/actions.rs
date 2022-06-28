@@ -8,17 +8,37 @@ type At = usize;
 type From = usize;
 type To = usize;
 
-/// Those actions are stored in the undo tree
+#[derive(Clone, Debug)]
+pub enum MovementInput {
+    One(Movement),
+    // For doing something like diw, in which you have to move to the beginning of the text object,
+    // and the  delete to the end
+    Two(Movement, Movement),
+}
+
 #[derive(Clone, Debug)]
 pub enum Action {
+    Delete(MovementInput),
+    VisualMove(MovementInput),
+    Move(Movement),
+    Insert(String),
+    Yank(MovementInput),
+    Paste,
+    Undo,
+    Redo,
+}
+
+/// Those actions are stored in the undo tree
+#[derive(Clone, Debug)]
+pub enum UndoAction {
     Insert(At, Content),
     Delete(From, To),
 }
 
-impl Action {
+impl UndoAction {
     /// perform does the action and returns the action that is necessary to undo it
-    pub fn perform(&self, editor: &mut Editor) -> Result<Action> {
-        use Action::*;
+    pub fn perform(&self, editor: &mut Editor) -> Result<UndoAction> {
+        use UndoAction::*;
         match self {
             Insert(at, content) => {
                 Movement::ToRaw(*at).perform(editor)?;
@@ -280,7 +300,9 @@ impl Movement {
             content: deleted_content.clone(),
         };
 
-        editor.undo_tree.push(Action::Insert(from, deleted_content));
+        editor
+            .undo_tree
+            .push(UndoAction::Insert(from, deleted_content));
         Ok(())
     }
 
@@ -357,7 +379,7 @@ impl Editor {
         let position = self.current_buffer().raw_position();
 
         self.undo_tree
-            .push(Action::Delete(position.saturating_sub(1), position));
+            .push(UndoAction::Delete(position.saturating_sub(1), position));
 
         Ok(())
     }
