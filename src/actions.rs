@@ -26,6 +26,8 @@ pub enum Action {
     Paste,
     Undo,
     Redo,
+    LeaveProgram,
+    ChangeMode(Mode),
 }
 
 /// Those actions are stored in the undo tree
