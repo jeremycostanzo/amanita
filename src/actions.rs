@@ -1,14 +1,69 @@
 use crate::editor::{Clipboard, Editor};
 use crate::modes::Mode;
+use crate::Direction;
 use anyhow::Context;
 use anyhow::{bail, Result};
-
-enum Action {}
 
 type Content = String;
 type At = usize;
 type From = usize;
 type To = usize;
+
+#[derive(Clone, Debug)]
+pub enum Action<'a> {
+    Delete(&'a Movement),
+    VisualMove(&'a Movement),
+    VisualDelete,
+    VisualYank,
+    VisualPaste,
+    Move(&'a Movement),
+    Insert(&'a str),
+    Yank(&'a Movement),
+    Paste,
+    Undo,
+    Redo,
+    LeaveProgram,
+    ChangeMode(&'a Mode),
+    Save,
+    Complete(&'a Direction),
+}
+
+pub struct LeaveProgram;
+
+impl<'a> Action<'a> {
+    pub async fn execute(&self, editor: &mut Editor) -> anyhow::Result<Option<LeaveProgram>> {
+        use Action::*;
+        let mut leave_program = false;
+
+        match self {
+            Delete(movement) => movement.delete(editor)?,
+            VisualMove(movement) => movement.visual_move(editor)?,
+            VisualDelete => editor.delete_selection()?,
+            VisualYank => todo!(),
+            VisualPaste => {
+                editor.delete_selection()?;
+                editor.paste()?
+            }
+            Move(movement) => movement.perform(editor)?,
+            Insert(text) => editor.insert(text)?,
+            Yank(movement) => movement.yank(editor)?,
+            Paste => editor.paste()?,
+            Undo => editor.undo()?,
+            Redo => editor.redo()?,
+            LeaveProgram => leave_program = true,
+            ChangeMode(mode) => {
+                let current_mode = &editor.mode;
+                if current_mode == &Mode::Insert {
+                    editor.leave_insert_mode()?;
+                }
+                editor.mode = (*mode).clone()
+            }
+            Save => editor.save().await?,
+            Complete(direction) => editor.insert_completion(**direction)?,
+        }
+        Ok(leave_program.then_some(crate::actions::LeaveProgram))
+    }
+}
 
 /// Those actions are stored in the undo tree
 #[derive(Clone, Debug)]
@@ -234,7 +289,7 @@ impl Movement {
         }
     }
 
-    pub fn visual_move(self, editor: &mut Editor) -> Result<()> {
+    pub fn visual_move(&self, editor: &mut Editor) -> Result<()> {
         if editor.mode != Mode::Visual {
             bail!("Editor mode is {} but visual move was called", editor.mode);
         }
@@ -245,7 +300,7 @@ impl Movement {
         Ok(())
     }
 
-    pub fn delete(self, editor: &mut Editor) -> Result<()> {
+    pub fn delete(&self, editor: &mut Editor) -> Result<()> {
         let old_position = editor.current_buffer().raw_position();
         self.perform(editor).context("Delete")?;
         let position_after_move = editor.current_buffer().raw_position();

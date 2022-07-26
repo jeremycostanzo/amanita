@@ -94,7 +94,7 @@ impl Buffer {
 }
 
 impl Editor {
-    fn insert_completion(&mut self, direction: Direction) -> Result<()> {
+    pub fn insert_completion(&mut self, direction: Direction) -> Result<()> {
         if self.completion_words.is_none() {
             self.completion_words = Some(self.current_buffer().get_completion_matches(direction))
         }
