@@ -21,52 +21,6 @@ use std::collections::HashMap;
 use crate::actions::Action;
 use crossterm::event::Event;
 
-pub async fn handle_input(editor: &mut Editor) -> Result<()> {
-    let mut reader = EventStream::new();
-
-    loop {
-        let event = reader.next().fuse();
-
-        match event.await {
-            Some(Ok(event)) => {
-                let mode = &editor.mode;
-                let leave_program = match mode {
-                    Mode::Insert => insert::handle_event(event, editor).await,
-                    Mode::Normal => normal::handle_event(event, editor).await,
-                    Mode::NormalDelete => normal_delete::handle_event(event, editor).await,
-                    Mode::NormalYank => normal_yank::handle_event(event, editor).await,
-                    Mode::Visual => visual::handle_event(event, editor).await,
-                }?;
-
-                if let Some(LeaveProgram) = leave_program {
-                    break;
-                }
-
-                editor.render()?;
-            }
-            Some(Err(e)) => println!("Error: {:?}\r", e),
-            None => continue,
-        }
-    }
-    Ok(())
-}
-
-pub async fn generic_input(editor: &mut Editor) -> Result<()> {
-    let mut reader = EventStream::new();
-    let event = reader.next().fuse();
-
-    match event.await {
-        Some(Ok(event)) => {
-            let chord = &mut editor.current_chord;
-            chord.push(event);
-            todo!();
-        }
-        error => error!(?error, "Could not find event when polling"),
-    }
-
-    Ok(())
-}
-
 pub type ActionMapping<'a> = HashMap<Vec<Event>, Vec<Action<'a>>>;
 pub enum Operator {
     Delete,
@@ -224,7 +178,7 @@ impl<'a> Default for MappingConfiguration<'a> {
 
 use crate::actions::LeaveProgram;
 
-pub async fn input_handler<'a>(
+pub async fn handle_input<'a>(
     editor: &mut Editor,
     mapping_configuration: &MappingConfiguration<'a>,
 ) {

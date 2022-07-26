@@ -1,5 +1,5 @@
 use amanita::buffer::Buffer;
-use amanita::input::input_handler;
+use amanita::input::handle_input;
 use amanita::EditorBuilder;
 use crossterm::cursor;
 use crossterm::execute;
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 
     let mapping_configuration = Default::default();
 
-    input_handler(&mut editor, &mapping_configuration).await;
+    handle_input(&mut editor, &mapping_configuration).await;
 
     Ok(())
 }
