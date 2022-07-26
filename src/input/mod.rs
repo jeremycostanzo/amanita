@@ -230,7 +230,7 @@ pub async fn input_handler<'a>(
 ) {
     let mut reader = EventStream::new();
 
-    loop {
+    'outer: loop {
         editor
             .render()
             .map_err(|e| error!(?e, "Couldn't render"))
@@ -249,7 +249,7 @@ pub async fn input_handler<'a>(
                     Some(actions) => {
                         for action in actions {
                             match action.execute(editor).await {
-                                Ok(Some(LeaveProgram)) => break,
+                                Ok(Some(LeaveProgram)) => break 'outer,
                                 Ok(None) => (),
                                 Err(error) => error!(?error),
                             }
@@ -308,6 +308,8 @@ pub async fn input_handler<'a>(
                             .insert(c.to_string().as_str())
                             .map_err(|error| error!(?error))
                             .ok();
+
+                        editor.current_chord = Vec::new();
                     }
 
                     Event::Key(KeyEvent {
@@ -319,6 +321,8 @@ pub async fn input_handler<'a>(
                             .insert_char(uppercase_chars[0])
                             .map_err(|error| error!(?error))
                             .ok();
+
+                        editor.current_chord = Vec::new();
                     }
                     _ => (),
                 };
