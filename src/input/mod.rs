@@ -10,6 +10,7 @@ use crate::modes::Mode;
 use futures::{future::FutureExt, StreamExt};
 
 use anyhow::Result;
+use tracing::error;
 
 use crossterm::event::EventStream;
 
@@ -44,3 +45,25 @@ pub async fn handle_input(editor: &mut Editor) -> Result<()> {
     }
     Ok(())
 }
+
+pub async fn generic_input(editor: &mut Editor) -> Result<()> {
+    let mut reader = EventStream::new();
+    let event = reader.next().fuse();
+
+    match event.await {
+        Some(Ok(event)) => {
+            let chord = &mut editor.current_chord;
+            chord.push(event);
+            todo!();
+        }
+        error => error!(?error, "Could not find event when polling"),
+    }
+
+    Ok(())
+}
+
+use std::collections::HashMap;
+
+use crossterm::event::Event;
+
+struct MappingConfiguration(HashMap<Vec<Event>, Vec<Action>>);

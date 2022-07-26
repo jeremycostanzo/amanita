@@ -1,9 +1,10 @@
-use crate::actions::Action;
+use crate::actions::EditAction;
 use crate::actions::Movement;
 use crate::buffer::Buffer;
 use crate::completion::CompletionWords;
 use crate::modes::Mode;
 use crate::ui::Screen;
+use crossterm::event::Event;
 
 use anyhow::Context;
 use anyhow::{bail, Result};
@@ -18,16 +19,17 @@ pub struct Editor {
     pub clipboard: Clipboard,
     pub undo_tree: UndoTree,
     pub completion_words: Option<CompletionWords>,
+    pub current_chord: Vec<Event>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct UndoTree {
-    actions: Vec<Action>,
+    actions: Vec<EditAction>,
     insert_index: usize,
 }
 
 impl UndoTree {
-    pub fn push(&mut self, action: Action) {
+    pub fn push(&mut self, action: EditAction) {
         let vec = &mut self.actions;
         vec.truncate(self.insert_index);
 
@@ -35,19 +37,19 @@ impl UndoTree {
         self.insert_index += 1;
     }
 
-    pub fn replace_undo(&mut self, action: Action) {
+    pub fn replace_undo(&mut self, action: EditAction) {
         if let Some(old_action) = self.actions.get_mut(self.insert_index) {
             *old_action = action
         }
     }
 
-    pub fn replace_redo(&mut self, action: Action) {
+    pub fn replace_redo(&mut self, action: EditAction) {
         if let Some(old_action) = self.actions.get_mut(self.insert_index.saturating_sub(1)) {
             *old_action = action
         }
     }
 
-    pub fn undo(&mut self) -> Option<Action> {
+    pub fn undo(&mut self) -> Option<EditAction> {
         if self.insert_index == 0 {
             return None;
         }
@@ -61,7 +63,7 @@ impl UndoTree {
         }
     }
 
-    pub fn redo(&mut self) -> Option<Action> {
+    pub fn redo(&mut self) -> Option<EditAction> {
         let action = self.actions.get(self.insert_index);
         match action {
             Some(action) => {
