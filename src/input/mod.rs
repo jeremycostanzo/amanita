@@ -310,6 +310,7 @@ pub async fn input_handler<'a>(
                             .ok();
 
                         editor.current_chord = Vec::new();
+                        continue;
                     }
 
                     Event::Key(KeyEvent {
@@ -323,11 +324,13 @@ pub async fn input_handler<'a>(
                             .ok();
 
                         editor.current_chord = Vec::new();
+                        continue;
                     }
                     _ => (),
                 };
 
                 // Not found
+                editor.current_chord = Vec::new();
             }
             None => error!("Input is none"),
             Some(Err(error)) => error!(%error, "Couldn't read input"),
