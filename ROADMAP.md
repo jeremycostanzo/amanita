@@ -1,9 +1,4 @@
-# Current week (Week 5)
-- [ ] DRY Input and make it easy to change
-- [ ] Search
-- [ ] Find and replace
-
-# Week 6 and beyond
+# Week 7 and beyond
 - [ ] File browser
 - [ ] Multiple buffers
 - [ ] Print line number
@@ -13,10 +8,19 @@
 - [ ] Line wrap
 - [ ] Multiple windows
 
+# Week 6
+- [ ] Search
+- [ ] Find and replace
+
+# Week 5
+- [ ] New input logic
+- [ ] Reimplement modes
+- [ ] allow "jk" in insert mode
+- [ ] Extract input configuration to separate file and parse it
+
 # Week 4
 - [x] Completion
 - [x] Status line to display file, cursor position
-
 
 # Week 3
 - [x] $ ^
