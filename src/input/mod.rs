@@ -13,7 +13,13 @@ use futures::{future::FutureExt, StreamExt};
 use anyhow::Result;
 use tracing::error;
 
+use crate::Direction;
 use crossterm::event::EventStream;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::collections::HashMap;
+
+use crate::actions::Action;
+use crossterm::event::Event;
 
 pub async fn handle_input(editor: &mut Editor) -> Result<()> {
     let mut reader = EventStream::new();
@@ -61,11 +67,6 @@ pub async fn generic_input(editor: &mut Editor) -> Result<()> {
     Ok(())
 }
 
-use std::collections::HashMap;
-
-use crate::actions::Action;
-use crossterm::event::Event;
-
 pub type ActionMapping<'a> = HashMap<Vec<Event>, Vec<Action<'a>>>;
 pub enum Operator {
     Delete,
@@ -87,6 +88,138 @@ pub type OperatorMapping = HashMap<Event, Operator>;
 pub struct MappingConfiguration<'a> {
     action_mapping: ActionMapping<'a>,
     operator_mapping: OperatorMapping,
+}
+
+impl<'a> Default for MappingConfiguration<'a> {
+    fn default() -> Self {
+        Self {
+            action_mapping: [
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('s'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Save],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('j'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Complete(&Direction::Backward)],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('k'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Complete(&Direction::Forward)],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('a'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Move(&Movement::BeginningOfLine)],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('e'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Move(&Movement::EndOfLine)],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Right,
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Move(&Movement::Word(1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Right,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Move(&Movement::Cursor(1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Up,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Move(&Movement::Line(-1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Left,
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::Move(&Movement::Word(-1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Left,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Move(&Movement::Cursor(-1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Down,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Move(&Movement::Line(1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Backspace,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Delete(&Movement::Cursor(-1))],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Tab,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Insert("\t\t\t\t")],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Enter,
+                        modifiers: KeyModifiers::NONE,
+                    })],
+                    vec![Action::Insert("\n")],
+                ),
+                (
+                    vec![Event::Key(KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
+                    })],
+                    vec![Action::LeaveProgram],
+                ),
+            ]
+            .into(),
+            operator_mapping: [
+                (
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char('y'),
+                        modifiers: KeyModifiers::NONE,
+                    }),
+                    Operator::Yank,
+                ),
+                (
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char('d'),
+                        modifiers: KeyModifiers::NONE,
+                    }),
+                    Operator::Delete,
+                ),
+            ]
+            .into(),
+        }
+    }
 }
 
 use crate::actions::LeaveProgram;
@@ -165,8 +298,32 @@ pub async fn input_handler<'a>(
                     continue;
                 };
 
+                // If character and insert mode
+                match event {
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char(c),
+                        modifiers: KeyModifiers::NONE,
+                    }) => {
+                        editor
+                            .insert(c.to_string().as_str())
+                            .map_err(|error| error!(?error))
+                            .ok();
+                    }
+
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char(c),
+                        modifiers: KeyModifiers::SHIFT,
+                    }) => {
+                        let uppercase_chars = c.to_uppercase().collect::<Vec<_>>();
+                        editor
+                            .insert_char(uppercase_chars[0])
+                            .map_err(|error| error!(?error))
+                            .ok();
+                    }
+                    _ => (),
+                };
+
                 // Not found
-                editor.current_chord = Vec::new();
             }
             None => error!("Input is none"),
             Some(Err(error)) => error!(%error, "Couldn't read input"),
